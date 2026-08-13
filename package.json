@@ -5,7 +5,7 @@
   "main": "src/server.js",
   "type": "commonjs",
   "scripts": {
-    "start": "node src/scripts/createDispatcher.js admin admin123 admin && node src/server.js",
+    "start": "node src/createDispatcher.js admin admin123 admin && node src/server.js",
     "create-dispatcher": "node src/createDispatcher.js"
   },
   "dependencies": {
