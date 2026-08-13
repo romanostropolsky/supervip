@@ -34,13 +34,14 @@ const PORT = process.env.PORT || 3000;
 
 async function main() {
   await initSchema();
-  await bot.launch();
-  console.log('Telegram-бот запущено');
+  bot.launch()
+    .then(() => console.log('Telegram-бот запущено'))
+    .catch(err => console.error('Помилка бота:', err.message));
 exec('node createDispatcher.js admin admin123 admin', { cwd: __dirname }, (err, stdout) => {
     if (err) console.log('Create admin note:', err.message);
     else console.log('Create admin output:', stdout);
 });
-  app.listen(PORT, () => console.log(`Сервер запущено на порті ${PORT}`));
+  app.listen(PORT, '0.0.0.0', () => console.log(`Сервер запущено на порті ${PORT}`));
 }
 
 main().catch((e) => {
