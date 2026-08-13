@@ -60,6 +60,40 @@ async function initSchema() {
   }
 }
 
+// --- API АВТОРИЗАЦІЇ (ЛОГІН) ---
+const handleLogin = async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Введіть логін та пароль' });
+    }
+
+    const result = await pool.query('SELECT * FROM dispatchers WHERE username = $1', [username]);
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Невірний логін або пароль' });
+    }
+
+    const user = result.rows[0];
+    const isValid = await bcrypt.compare(password, user.password_hash);
+
+    if (!isValid) {
+      return res.status(401).json({ error: 'Невірний логін або пароль' });
+    }
+
+    // Повертаємо успішну відповідь та дані користувача
+    res.json({
+      success: true,
+      user: { id: user.id, username: user.username, role: user.role }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Підтримуємо обидва можливі варіанти URL для логіну з фронтенду
+app.post('/api/login', handleLogin);
+app.post('/api/dispatchers/login', handleLogin);
+
 // --- API ДЛЯ МІСТ В АДМІНЦІ ---
 app.get('/api/cities', async (req, res) => {
   try {
@@ -164,7 +198,7 @@ const PORT = process.env.PORT || 3000;
 async function main() {
   await initSchema();
 
-  // ✅ ГАРАНТОВАНЕ СКИДАННЯ ТА СТВОРЕННЯ АДМІНА (admin / admin123)
+  // ✅ ГАРАНТОВАНЕ СТВОРЕННЯ/ОНОВЛЕННЯ АДМІНА (admin / admin123)
   try {
     const hash = await bcrypt.hash('admin123', 10);
     await pool.query(
