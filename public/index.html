@@ -96,6 +96,7 @@ function stageLabel(r,stage){
   return '—';
 }
 function priceOf(cfg, routeId, carTypeId){
+  if(!cfg || !cfg.prices) return {price:0, commission:0};
   const p = cfg.prices.find(p=>String(p.route_id)===String(routeId) && String(p.car_type_id)===String(carTypeId));
   return p || {price:0, commission:0};
 }
@@ -108,17 +109,23 @@ async function render(){
   if(!state.config){
     try{
       state.config = await api('/config');
-      state.drivers = await api('/drivers');
-      state.orders = await api('/orders');
+      const drv = await api('/drivers');
+      const ord = await api('/orders');
+      state.drivers = Array.isArray(drv) ? drv : [];
+      state.orders = Array.isArray(ord) ? ord : [];
     }catch(e){ showToast(e.message); }
   }
+
+  // Перевірка на випадок, якщо дані не масив
+  const driversList = Array.isArray(state.drivers) ? state.drivers : [];
+  const ordersList = Array.isArray(state.orders) ? state.orders : [];
 
   root.innerHTML = `
     <div class="top">
       <div class="brand"><span class="dot"></span><h1>Диспетчерська</h1></div>
       <div class="board">
-        <div><span>Водіїв онлайн</span>${state.drivers.filter(d=>d.status==='online').length}</div>
-        <div><span>Активних замовлень</span>${state.orders.filter(o=>['sent','confirmed','in_progress'].includes(o.status)).length}</div>
+        <div><span>Водіїв онлайн</span>${driversList.filter(d=>d.status==='online').length}</div>
+        <div><span>Активних замовлень</span>${ordersList.filter(o=>['sent','confirmed','in_progress'].includes(o.status)).length}</div>
       </div>
       <button class="btn secondary small" onclick="logout()">Вийти</button>
     </div>
@@ -148,7 +155,8 @@ function loginHtml(){
   </div>`;
 }
 function bindLogin(){
-  document.getElementById('lg_pass').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+  const passElem = document.getElementById('lg_pass');
+  if(passElem) passElem.addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
 }
 async function doLogin(){
   const username = document.getElementById('lg_user').value.trim();
@@ -182,14 +190,14 @@ function renderMain(){
 
 /* ===================== NEW ORDER ===================== */
 function renderNewOrder(main){
-  const cfg = state.config;
+  const cfg = state.config || {routes:[], carTypes:[]};
   main.innerHTML = `
     <h2 class="page-title">Нове замовлення</h2>
     <p class="page-sub">Ціна й комісія розраховуються автоматично з тарифної сітки.</p>
     <div class="panel">
       <div class="row">
-        <div><label>Маршрут</label><select id="f_route">${cfg.routes.map(r=>`<option value="${r.id}">${r.start_city} → ${r.end_city}</option>`).join('')}</select></div>
-        <div><label>Клас авто</label><select id="f_car">${cfg.carTypes.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')}</select></div>
+        <div><label>Маршрут</label><select id="f_route">${(cfg.routes||[]).map(r=>`<option value="${r.id}">${r.start_city} → ${r.end_city}</option>`).join('')}</select></div>
+        <div><label>Клас авто</label><select id="f_car">${(cfg.carTypes||[]).map(c=>`<option value="${c.id}">${c.name}</option>`).join('')}</select></div>
       </div>
       <div class="row">
         <div><label>Кількість пасажирів</label><input type="number" id="f_pax" min="1" max="8" value="1"></div>
@@ -199,19 +207,31 @@ function renderNewOrder(main){
       <div class="price-preview" id="pricePreview"></div>
       <button class="btn" onclick="submitOrder()">Створити замовлення</button>
     </div>`;
-  document.getElementById('f_route').onchange = updatePreview;
-  document.getElementById('f_car').onchange = updatePreview;
+  const fRoute = document.getElementById('f_route');
+  const fCar = document.getElementById('f_car');
+  if(fRoute) fRoute.onchange = updatePreview;
+  if(fCar) fCar.onchange = updatePreview;
   updatePreview();
 }
 function updatePreview(){
   const cfg = state.config;
-  const routeId = document.getElementById('f_route').value;
-  const carId = document.getElementById('f_car').value;
+  const fRoute = document.getElementById('f_route');
+  const fCar = document.getElementById('f_car');
+  if(!fRoute || !fCar) return;
+  
+  const routeId = fRoute.value;
+  const carId = fCar.value;
   const p = priceOf(cfg, routeId, carId);
-  document.getElementById('pricePreview').innerHTML = `<span class="lbl">До сплати клієнтом</span><br><span class="big">${p.price} грн</span> &nbsp; <span class="lbl">комісія: ${p.commission} грн</span>`;
-  const eligible = state.drivers.filter(d=>d.status==='online' && String(d.car_type_id)===String(carId) && !d.current_order_id && d.telegram_chat_id);
+  const pricePreview = document.getElementById('pricePreview');
+  if(pricePreview) {
+    pricePreview.innerHTML = `<span class="lbl">До сплати клієнтом</span><br><span class="big">${p.price} грн</span> &nbsp; <span class="lbl">комісія: ${p.commission} грн</span>`;
+  }
+  const driversList = Array.isArray(state.drivers) ? state.drivers : [];
+  const eligible = driversList.filter(d=>d.status==='online' && String(d.car_type_id)===String(carId) && !d.current_order_id && d.telegram_chat_id);
   const sel = document.getElementById('f_driver');
-  sel.innerHTML = '<option value="">— призначити пізніше —</option>' + eligible.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
+  if(sel) {
+    sel.innerHTML = '<option value="">— призначити пізніше —</option>' + eligible.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
+  }
 }
 async function submitOrder(){
   const routeId = document.getElementById('f_route').value;
@@ -222,15 +242,21 @@ async function submitOrder(){
   try{
     const order = await api('/orders', {method:'POST', body:{routeId,carTypeId,passengers,luggage,driverId}});
     showToast(order.warning || 'Замовлення створено' + (driverId && !order.warning ? ' і надіслано водію в Telegram' : ''));
-    state.orders = await api('/orders'); state.drivers = await api('/drivers');
+    const ord = await api('/orders');
+    const drv = await api('/drivers');
+    state.orders = Array.isArray(ord) ? ord : [];
+    state.drivers = Array.isArray(drv) ? drv : [];
     state.tab='orders'; render();
   }catch(e){ showToast(e.message); }
 }
 
 /* ===================== ORDERS ===================== */
 function renderOrders(main){
-  const cfg = state.config;
-  const orders = [...state.orders].sort((a,b)=> new Date(b.created_at)-new Date(a.created_at));
+  const cfg = state.config || {routes:[], carTypes:[]};
+  const ordersList = Array.isArray(state.orders) ? state.orders : [];
+  const driversList = Array.isArray(state.drivers) ? state.drivers : [];
+  const orders = [...ordersList].sort((a,b)=> new Date(b.created_at)-new Date(a.created_at));
+  
   main.innerHTML = `
     <h2 class="page-title">Замовлення</h2>
     <div id="editBox"></div>
@@ -238,14 +264,14 @@ function renderOrders(main){
       ${orders.length===0?'<div class="empty">Замовлень ще немає</div>':`
       <table><tr><th>Маршрут</th><th>Клас</th><th>Пас.</th><th>Багаж</th><th>Ціна</th><th>Комісія</th><th>Водій</th><th>Статус</th><th>Локація</th><th></th></tr>
       ${orders.map(o=>{
-        const route = cfg.routes.find(r=>r.id===o.route_id)||{start_city:'?',end_city:'?'};
-        const car = cfg.carTypes.find(c=>c.id===o.car_type_id)||{name:'?'};
-        const drv = state.drivers.find(d=>d.id===o.driver_id);
+        const route = (cfg.routes||[]).find(r=>r.id===o.route_id)||{start_city:'?',end_city:'?'};
+        const car = (cfg.carTypes||[]).find(c=>c.id===o.car_type_id)||{name:'?'};
+        const drv = driversList.find(d=>d.id===o.driver_id);
         return `<tr>
           <td>${route.start_city} → ${route.end_city}</td><td>${car.name}</td><td>${o.passengers}</td><td>${o.luggage?'так':'ні'}</td>
           <td class="mono">${o.price} грн</td><td class="mono">${o.commission} грн</td>
           <td>${drv?drv.name:(o.status==='new'?assignSelect(o):'—')}</td>
-          <td><span class="chip ${o.status}">${STATUS_LABELS[o.status]}</span></td>
+          <td><span class="chip ${o.status}">${STATUS_LABELS[o.status]||o.status}</span></td>
           <td>${o.stage?stageLabel(route,o.stage):'—'}</td>
           <td style="white-space:nowrap">
             ${o.status==='new'?`<button class="btn secondary small" onclick="openEditOrder(${o.id})">Редагувати</button>`:''}
@@ -258,16 +284,17 @@ function renderOrders(main){
 }
 function openEditOrder(id){ state.editingOrderId=id; renderEditOrder(); }
 function renderEditOrder(){
-  const cfg = state.config;
-  const o = state.orders.find(x=>x.id===state.editingOrderId);
+  const cfg = state.config || {routes:[], carTypes:[]};
+  const ordersList = Array.isArray(state.orders) ? state.orders : [];
+  const o = ordersList.find(x=>x.id===state.editingOrderId);
   const box = document.getElementById('editBox');
   if(!o || !box) return;
   box.innerHTML = `
     <div class="panel">
       <h3>Редагування замовлення №${o.id}</h3>
       <div class="row">
-        <div><label>Маршрут</label><select id="e_route">${cfg.routes.map(r=>`<option value="${r.id}" ${r.id===o.route_id?'selected':''}>${r.start_city} → ${r.end_city}</option>`).join('')}</select></div>
-        <div><label>Клас авто</label><select id="e_car">${cfg.carTypes.map(c=>`<option value="${c.id}" ${c.id===o.car_type_id?'selected':''}>${c.name}</option>`).join('')}</select></div>
+        <div><label>Маршрут</label><select id="e_route">${(cfg.routes||[]).map(r=>`<option value="${r.id}" ${r.id===o.route_id?'selected':''}>${r.start_city} → ${r.end_city}</option>`).join('')}</select></div>
+        <div><label>Клас авто</label><select id="e_car">${(cfg.carTypes||[]).map(c=>`<option value="${c.id}" ${c.id===o.car_type_id?'selected':''}>${c.name}</option>`).join('')}</select></div>
       </div>
       <div class="row">
         <div><label>Кількість пасажирів</label><input type="number" id="e_pax" min="1" max="8" value="${o.passengers}"></div>
@@ -292,14 +319,16 @@ async function saveEditOrder(id){
   const luggage = document.getElementById('e_luggage').checked;
   try{
     await api(`/orders/${id}`, {method:'PUT', body:{routeId,carTypeId,passengers,luggage}});
-    state.orders = await api('/orders');
+    const ord = await api('/orders');
+    state.orders = Array.isArray(ord) ? ord : [];
     state.editingOrderId=null;
     showToast('Замовлення оновлено');
     render();
   }catch(e){ showToast(e.message); }
 }
 function assignSelect(order){
-  const eligible = state.drivers.filter(d=>d.status==='online' && d.car_type_id===order.car_type_id && !d.current_order_id && d.telegram_chat_id);
+  const driversList = Array.isArray(state.drivers) ? state.drivers : [];
+  const eligible = driversList.filter(d=>d.status==='online' && d.car_type_id===order.car_type_id && !d.current_order_id && d.telegram_chat_id);
   if(eligible.length===0) return '<span style="color:var(--muted);font-size:12px">немає вільних</span>';
   return `<select onchange="assignDriver(${order.id}, this.value)" style="width:auto;min-width:140px;padding:5px;font-size:12px;"><option value="">— призначити —</option>${eligible.map(d=>`<option value="${d.id}">${d.name}</option>`).join('')}</select>`;
 }
@@ -308,30 +337,43 @@ async function assignDriver(orderId, driverId){
   try{
     await api(`/orders/${orderId}/assign`, {method:'POST', body:{driverId}});
     showToast('Замовлення надіслано водію в Telegram');
-    state.orders = await api('/orders'); state.drivers = await api('/drivers'); render();
+    const ord = await api('/orders');
+    const drv = await api('/drivers');
+    state.orders = Array.isArray(ord) ? ord : [];
+    state.drivers = Array.isArray(drv) ? drv : [];
+    render();
   }catch(e){ showToast(e.message); }
 }
 async function cancelOrder(orderId){
-  await api(`/orders/${orderId}/cancel`, {method:'POST'});
-  state.orders = await api('/orders'); state.drivers = await api('/drivers'); render();
+  try {
+    await api(`/orders/${orderId}/cancel`, {method:'POST'});
+    const ord = await api('/orders');
+    const drv = await api('/drivers');
+    state.orders = Array.isArray(ord) ? ord : [];
+    state.drivers = Array.isArray(drv) ? drv : [];
+    render();
+  }catch(e){ showToast(e.message); }
 }
 
 /* ===================== DRIVERS ===================== */
 function renderDrivers(main){
-  const cfg = state.config;
+  const cfg = state.config || {routes:[], carTypes:[]};
+  const driversList = Array.isArray(state.drivers) ? state.drivers : [];
+  const ordersList = Array.isArray(state.orders) ? state.orders : [];
+
   main.innerHTML = `
     <h2 class="page-title">Водії</h2>
     <div class="panel">
-      ${state.drivers.length===0?'<div class="empty">Водіїв ще не зареєстровано</div>':`
+      ${driversList.length===0?'<div class="empty">Водіїв ще не зареєстровано</div>':`
       <table><tr><th>Ім'я</th><th>Телефон</th><th>Клас</th><th>Telegram</th><th>Статус</th><th>Поточне замовлення</th><th>Локація</th></tr>
-      ${state.drivers.map(d=>{
-        const car = cfg.carTypes.find(c=>c.id===d.car_type_id)||{name:'?'};
-        const order = state.orders.find(o=>o.id===d.current_order_id);
-        const route = order ? cfg.routes.find(r=>r.id===order.route_id) : null;
+      ${driversList.map(d=>{
+        const car = (cfg.carTypes||[]).find(c=>c.id===d.car_type_id)||{name:'?'};
+        const order = ordersList.find(o=>o.id===d.current_order_id);
+        const route = order ? (cfg.routes||[]).find(r=>r.id===order.route_id) : null;
         return `<tr><td>${d.name}</td><td class="mono">${d.phone||'—'}</td><td>${car.name}</td>
         <td>${d.telegram_chat_id?'✅ підключено':'⏳ очікує /start'}</td>
         <td><span class="status-dot ${d.status}"></span>${d.status==='online'?'Онлайн':'Офлайн'}</td>
-        <td>${order?`<span class="chip ${order.status}">${STATUS_LABELS[order.status]}</span>`:'—'}</td>
+        <td>${order?`<span class="chip ${order.status}">${STATUS_LABELS[order.status]||order.status}</span>`:'—'}</td>
         <td>${order&&order.stage&&route?stageLabel(route,order.stage):'—'}</td></tr>`;
       }).join('')}</table>`}
     </div>`;
@@ -339,28 +381,31 @@ function renderDrivers(main){
 
 /* ===================== ROUTES & TARIFFS ===================== */
 function renderRoutes(main){
-  const cfg = state.config;
+  const cfg = state.config || {routes:[], carTypes:[]};
+  const routes = cfg.routes || [];
+  const carTypes = cfg.carTypes || [];
+
   main.innerHTML = `
     <h2 class="page-title">Маршрути і тарифи</h2>
     <p class="page-sub">До 10 маршрутів і до 5 класів авто.</p>
-    <div class="panel"><h3>Маршрути (${cfg.routes.length}/10)</h3>
+    <div class="panel"><h3>Маршрути (${routes.length}/10)</h3>
       <table><tr><th>Звідки</th><th>Куди</th><th>Зупинка 1</th><th>Зупинка 2</th><th></th></tr>
-      ${cfg.routes.map(r=>`<tr><td>${r.start_city}</td><td>${r.end_city}</td><td>${r.stop1||'—'}</td><td>${r.stop2||'—'}</td><td><button class="btn danger small" onclick="deleteRoute(${r.id})">Видалити</button></td></tr>`).join('')}</table>
-      ${cfg.routes.length<10?`<div class="row" style="margin-top:14px">
+      ${routes.map(r=>`<tr><td>${r.start_city}</td><td>${r.end_city}</td><td>${r.stop1||'—'}</td><td>${r.stop2||'—'}</td><td><button class="btn danger small" onclick="deleteRoute(${r.id})">Видалити</button></td></tr>`).join('')}</table>
+      ${routes.length<10?`<div class="row" style="margin-top:14px">
         <div><label>Звідки</label><input type="text" id="nr_start"></div>
         <div><label>Куди</label><input type="text" id="nr_end"></div>
         <div><label>Зупинка 1</label><input type="text" id="nr_s1"></div>
         <div><label>Зупинка 2</label><input type="text" id="nr_s2"></div>
       </div><button class="btn secondary" onclick="addRoute()">Додати маршрут</button>`:'<p class="page-sub">Ліміт досягнуто</p>'}
     </div>
-    <div class="panel"><h3>Класи авто (${cfg.carTypes.length}/5)</h3>
-      <table><tr><th>Назва</th><th></th></tr>${cfg.carTypes.map(c=>`<tr><td>${c.name}</td><td><button class="btn danger small" onclick="deleteCarType(${c.id})">Видалити</button></td></tr>`).join('')}</table>
-      ${cfg.carTypes.length<5?`<div class="row" style="margin-top:14px"><div><label>Назва класу</label><input type="text" id="nc_name"></div></div><button class="btn secondary" onclick="addCarType()">Додати клас</button>`:'<p class="page-sub">Ліміт досягнуто</p>'}
+    <div class="panel"><h3>Класи авто (${carTypes.length}/5)</h3>
+      <table><tr><th>Назва</th><th></th></tr>${carTypes.map(c=>`<tr><td>${c.name}</td><td><button class="btn danger small" onclick="deleteCarType(${c.id})">Видалити</button></td></tr>`).join('')}</table>
+      ${carTypes.length<5?`<div class="row" style="margin-top:14px"><div><label>Назва класу</label><input type="text" id="nc_name"></div></div><button class="btn secondary" onclick="addCarType()">Додати клас</button>`:'<p class="page-sub">Ліміт досягнуто</p>'}
     </div>
     <div class="panel"><h3>Тарифна сітка (ціна / комісія, грн)</h3>
-      ${cfg.routes.length===0||cfg.carTypes.length===0?'<div class="empty">Додайте маршрут і клас авто</div>':`
-      <div style="overflow-x:auto"><table class="grid-price"><tr><th></th>${cfg.carTypes.map(c=>`<th>${c.name}</th>`).join('')}</tr>
-      ${cfg.routes.map(r=>`<tr><td class="rowhead">${r.start_city} → ${r.end_city}</td>${cfg.carTypes.map(c=>{
+      ${routes.length===0||carTypes.length===0?'<div class="empty">Додайте маршрут і клас авто</div>':`
+      <div style="overflow-x:auto"><table class="grid-price"><tr><th></th>${carTypes.map(c=>`<th>${c.name}</th>`).join('')}</tr>
+      ${routes.map(r=>`<tr><td class="rowhead">${r.start_city} → ${r.end_city}</td>${carTypes.map(c=>{
         const p = priceOf(cfg, r.id, c.id);
         return `<td><input type="number" value="${p.price}" onchange="setPrice(${r.id},${c.id},'price',this.value)">
         <br><input type="number" value="${p.commission}" onchange="setPrice(${r.id},${c.id},'commission',this.value)" style="margin-top:3px;color:var(--muted)"></td>`;
@@ -396,7 +441,9 @@ async function setPrice(routeId,carTypeId,field,value){
 
 /* ===================== REGISTER DRIVER ===================== */
 function renderRegister(main){
-  const cfg = state.config;
+  const cfg = state.config || {routes:[], carTypes:[]};
+  const driversList = Array.isArray(state.drivers) ? state.drivers : [];
+
   main.innerHTML = `
     <h2 class="page-title">Реєстрація водія</h2>
     <p class="page-sub">Після реєстрації водій має надіслати боту команду /start з кодом прив'язки.</p>
@@ -405,14 +452,14 @@ function renderRegister(main){
         <div><label>Ім'я</label><input type="text" id="rd_name"></div>
         <div><label>Телефон</label><input type="tel" id="rd_phone"></div>
       </div>
-      <div class="row"><div><label>Клас авто</label><select id="rd_car">${cfg.carTypes.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')}</select></div></div>
+      <div class="row"><div><label>Клас авто</label><select id="rd_car">${(cfg.carTypes||[]).map(c=>`<option value="${c.id}">${c.name}</option>`).join('')}</select></div></div>
       <button class="btn" onclick="registerDriver()">Зареєструвати водія</button>
     </div>
-    <div class="panel"><h3>Зареєстровані водії (${state.drivers.length})</h3>
-      ${state.drivers.length===0?'<div class="empty">Поки немає водіїв</div>':`
+    <div class="panel"><h3>Зареєстровані водії (${driversList.length})</h3>
+      ${driversList.length===0?'<div class="empty">Поки немає водіїв</div>':`
       <table><tr><th>Ім'я</th><th>Телефон</th><th>Клас</th><th>Код / Telegram</th><th></th></tr>
-      ${state.drivers.map(d=>{
-        const car = cfg.carTypes.find(c=>c.id===d.car_type_id)||{name:'?'};
+      ${driversList.map(d=>{
+        const car = (cfg.carTypes||[]).find(c=>c.id===d.car_type_id)||{name:'?'};
         return `<tr><td>${d.name}</td><td class="mono">${d.phone||'—'}</td><td>${car.name}</td>
         <td>${d.telegram_chat_id?'✅ підключено':`<div class="code-box">/start ${d.link_code}</div>`}</td>
         <td><button class="btn danger small" onclick="removeDriver(${d.id})">Видалити</button></td></tr>`;
@@ -426,12 +473,18 @@ async function registerDriver(){
   if(!name){ showToast("Вкажіть ім'я водія"); return; }
   try{
     await api('/drivers',{method:'POST', body:{name,phone,carTypeId}});
-    state.drivers = await api('/drivers');
+    const drv = await api('/drivers');
+    state.drivers = Array.isArray(drv) ? drv : [];
     showToast("Водія зареєстровано. Передайте йому код прив'язки.");
     render();
   }catch(e){ showToast(e.message); }
 }
-async function removeDriver(id){ await api('/drivers/'+id,{method:'DELETE'}); state.drivers=await api('/drivers'); render(); }
+async function removeDriver(id){ 
+  await api('/drivers/'+id,{method:'DELETE'}); 
+  const drv = await api('/drivers');
+  state.drivers = Array.isArray(drv) ? drv : [];
+  render(); 
+}
 
 /* ===================== REPORTS ===================== */
 async function exportReport(){
@@ -448,26 +501,33 @@ async function exportReport(){
 }
 async function renderReports(main){
   main.innerHTML = '<div class="empty">Завантаження...</div>';
-  const r = await api('/reports');
-  main.innerHTML = `
-    <h2 class="page-title">Звіт</h2>
-    <button class="btn secondary" style="margin-bottom:16px" onclick="exportReport()">⬇ Завантажити Excel</button>
-    <div class="stat-strip">
-      <div class="stat-box"><div class="n">${r.totalOrders}</div><div class="l">Усього замовлень</div></div>
-      <div class="stat-box"><div class="n">${r.completedOrders}</div><div class="l">Завершено</div></div>
-      <div class="stat-box"><div class="n">${r.revenue}</div><div class="l">Оборот, грн</div></div>
-      <div class="stat-box"><div class="n">${r.commission}</div><div class="l">Комісія сервісу, грн</div></div>
-    </div>
-    <div class="panel"><h3>По водіях</h3>
-      ${r.byDriver.length===0?'<div class="empty">Немає завершених поїздок</div>':`
-      <table><tr><th>Водій</th><th>Поїздок</th><th>Зібрано</th><th>Комісія</th><th>Чистими водію</th></tr>
-      ${r.byDriver.map(v=>`<tr><td>${v.driverName}</td><td>${v.trips}</td><td class="mono">${v.revenue} грн</td><td class="mono">${v.commission} грн</td><td class="mono">${v.net} грн</td></tr>`).join('')}</table>`}
-    </div>
-    <div class="panel"><h3>По маршрутах</h3>
-      ${r.byRoute.length===0?'<div class="empty">Немає завершених поїздок</div>':`
-      <table><tr><th>Маршрут</th><th>Поїздок</th><th>Оборот</th></tr>
-      ${r.byRoute.map(v=>`<tr><td>${v.routeLabel}</td><td>${v.trips}</td><td class="mono">${v.revenue} грн</td></tr>`).join('')}</table>`}
-    </div>`;
+  try {
+    const r = await api('/reports');
+    const byDriver = Array.isArray(r.byDriver) ? r.byDriver : [];
+    const byRoute = Array.isArray(r.byRoute) ? r.byRoute : [];
+
+    main.innerHTML = `
+      <h2 class="page-title">Звіт</h2>
+      <button class="btn secondary" style="margin-bottom:16px" onclick="exportReport()">⬇ Завантажити Excel</button>
+      <div class="stat-strip">
+        <div class="stat-box"><div class="n">${r.totalOrders||0}</div><div class="l">Усього замовлень</div></div>
+        <div class="stat-box"><div class="n">${r.completedOrders||0}</div><div class="l">Завершено</div></div>
+        <div class="stat-box"><div class="n">${r.revenue||0}</div><div class="l">Оборот, грн</div></div>
+        <div class="stat-box"><div class="n">${r.commission||0}</div><div class="l">Комісія сервісу, грн</div></div>
+      </div>
+      <div class="panel"><h3>По водіях</h3>
+        ${byDriver.length===0?'<div class="empty">Немає завершених поїздок</div>':`
+        <table><tr><th>Водій</th><th>Поїздок</th><th>Зібрано</th><th>Комісія</th><th>Чистими водію</th></tr>
+        ${byDriver.map(v=>`<tr><td>${v.driverName}</td><td>${v.trips}</td><td class="mono">${v.revenue} грн</td><td class="mono">${v.commission} грн</td><td class="mono">${v.net} грн</td></tr>`).join('')}</table>`}
+      </div>
+      <div class="panel"><h3>По маршрутах</h3>
+        ${byRoute.length===0?'<div class="empty">Немає завершених поїздок</div>':`
+        <table><tr><th>Маршрут</th><th>Поїздок</th><th>Оборот</th></tr>
+        ${byRoute.map(v=>`<tr><td>${v.routeLabel}</td><td>${v.trips}</td><td class="mono">${v.revenue} грн</td></tr>`).join('')}</table>`}
+      </div>`;
+  } catch(e) {
+    main.innerHTML = `<div class="empty">${e.message}</div>`;
+  }
 }
 
 /* ===================== DISPATCHERS (admin only) ===================== */
@@ -475,7 +535,7 @@ async function renderDispatchers(main){
   main.innerHTML = '<div class="empty">Завантаження...</div>';
   let list;
   try{ list = await api('/dispatchers'); }catch(e){ main.innerHTML = `<div class="empty">${e.message}</div>`; return; }
-  state.dispatchers = list;
+  state.dispatchers = Array.isArray(list) ? list : [];
   main.innerHTML = `
     <h2 class="page-title">Диспетчери</h2>
     <p class="page-sub">Керування акаунтами, що мають доступ до цієї панелі.</p>
