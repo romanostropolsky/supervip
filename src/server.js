@@ -1,4 +1,5 @@
 require('dotenv').config();
+const { exec } = require('child_process');
 const path = require('path');
 const express = require('express');
 const cors = require('cors');
@@ -35,6 +36,10 @@ async function main() {
   await initSchema();
   await bot.launch();
   console.log('Telegram-бот запущено');
+exec('node createDispatcher.js admin admin123 admin', { cwd: __dirname }, (err, stdout) => {
+    if (err) console.log('Create admin note:', err.message);
+    else console.log('Create admin output:', stdout);
+});
   app.listen(PORT, () => console.log(`Сервер запущено на порті ${PORT}`));
 }
 
