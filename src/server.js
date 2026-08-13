@@ -164,9 +164,10 @@ const PORT = process.env.PORT || 3000;
 async function main() {
   await initSchema();
 
-  // ✅ АВТОМАТИЧНЕ СТВОРЕННЯ/ПЕРЕВІРКА АДМІНІСТРАТОРА
+  // ✅ СТВОРЕННЯ АДМІНА ТІЛЬКИ ЯКЩО ЙОГО ЩЕ НЕМАЄ В БАЗІ
   try {
     const adminCheck = await pool.query('SELECT * FROM dispatchers WHERE username = $1', ['admin']);
+    
     if (adminCheck.rows.length === 0) {
       const hash = await bcrypt.hash('admin123', 10);
       await pool.query(
@@ -175,10 +176,10 @@ async function main() {
       );
       console.log('✅ Адміністратора admin / admin123 успішно створено!');
     } else {
-      console.log('ℹ️ Обліковий запис admin вже існує.');
+      console.log('ℹ️ Обліковий запис admin вже існує, пароль не змінюємо.');
     }
   } catch (e) {
-    console.error('Помилка перевірки/створення адміна:', e.message);
+    console.error('Помилка перевірки адміна:', e.message);
   }
 
   // Запуск бота
