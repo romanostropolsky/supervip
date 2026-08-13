@@ -3,39 +3,55 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Диспетчерська система</title>
+  <title>Повна диспетчерська система</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    body { background-color: #0f172a; color: #f8fafc; min-height: 100vh; display: flex; flex-direction: column; }
+    body { background-color: #0f172a; color: #f8fafc; min-height: 100vh; }
     
-    /* Секція входу */
+    /* Авторизація */
     .login-container { display: flex; justify-content: center; align-items: center; min-height: 100vh; }
     .login-card { background: #1e293b; border: 1px solid #334155; padding: 2.5rem; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
     .login-card h2 { font-size: 1.8rem; margin-bottom: 0.5rem; }
     .login-card p { color: #94a3b8; font-size: 0.9rem; margin-bottom: 1.5rem; }
     .form-group { margin-bottom: 1.2rem; }
     .form-group label { display: block; font-size: 0.85rem; margin-bottom: 0.4rem; color: #cbd5e1; }
-    .form-group input { width: 100%; padding: 0.75rem 1rem; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; outline: none; }
+    .form-group input, .form-group select { width: 100%; padding: 0.75rem 1rem; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; outline: none; }
     .btn-submit { width: 100%; padding: 0.8rem; background: #eab308; color: #0f172a; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; }
     .btn-submit:hover { background: #d97706; }
     .error-msg { color: #ef4444; font-size: 0.85rem; margin-top: 1rem; display: none; text-align: center; }
 
-    /* Панель адмінки */
-    #adminPanel { display: none; padding: 2rem; max-width: 1200px; margin: 0 auto; width: 100%; }
-    header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 1rem; margin-bottom: 2rem; }
+    /* Головна панель */
+    #adminPanel { display: none; }
+    header { background: #1e293b; padding: 1rem 2rem; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
     .btn-logout { background: #ef4444; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; }
     
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
-    .card { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 1.5rem; }
+    /* Навігаційні вкладки */
+    .nav-tabs { display: flex; gap: 10px; background: #1e293b; padding: 0.5rem 2rem; border-bottom: 1px solid #334155; }
+    .tab-btn { background: transparent; color: #94a3b8; border: none; padding: 0.75rem 1.2rem; cursor: pointer; font-weight: 600; border-radius: 6px; }
+    .tab-btn.active { background: #334155; color: #f59e0b; }
+
+    .main-content { padding: 2rem; max-width: 1400px; margin: 0 auto; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem; }
     .card h3 { margin-bottom: 1rem; color: #f59e0b; border-bottom: 1px solid #334155; padding-bottom: 0.5rem; }
-    
+
+    /* Таблиці */
     table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
     th, td { text-align: left; padding: 0.75rem; border-bottom: 1px solid #334155; font-size: 0.9rem; }
     th { color: #94a3b8; }
+    tr:hover { background: #26334d; }
+
+    /* Форми добавлення */
+    .inline-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 1rem; }
+    .inline-form input, .inline-form select { padding: 0.6rem; background: #0f172a; border: 1px solid #475569; border-radius: 4px; color: white; }
+    .inline-form button { background: #22c55e; color: white; border: none; padding: 0.6rem 1rem; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    .btn-danger { background: #ef4444; color: white; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; cursor: pointer; }
     
-    .add-form { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
-    .add-form input { flex: 1; padding: 0.5rem; background: #0f172a; border: 1px solid #475569; border-radius: 4px; color: white; }
-    .add-form button { background: #22c55e; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; }
+    .badge { padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
+    .badge-yellow { background: #ca8a04; color: white; }
+    .badge-green { background: #16a34a; color: white; }
   </style>
 </head>
 <body>
@@ -55,60 +71,122 @@
           <label>Пароль</label>
           <input type="password" id="password" required>
         </div>
-        <button type="submit" class="btn-submit" id="submitBtn">Увійти</button>
+        <button type="submit" class="btn-submit">Увійти</button>
         <div id="errorMsg" class="error-msg"></div>
       </form>
     </div>
   </div>
 
-  <!-- АДМІН ПАНЕЛЬ -->
+  <!-- ГОЛОВНА АДМІН-ПАНЕЛЬ -->
   <div id="adminPanel">
     <header>
-      <h2>Панель керування диспетчера</h2>
+      <h2>🚕 Диспетчерська система</h2>
       <div>
         <span id="userInfo" style="margin-right: 15px; color: #94a3b8;"></span>
         <button class="btn-logout" onclick="logout()">Вийти</button>
       </div>
     </header>
 
-    <div class="grid">
-      <!-- Картка міст -->
-      <div class="card">
-        <h3>🏙 Список міст</h3>
-        <div class="add-form">
-          <input type="text" id="newCity" placeholder="Назва міста">
-          <button onclick="addCity()">Додати</button>
+    <!-- Перемикач вкладок -->
+    <div class="nav-tabs">
+      <button class="tab-btn active" onclick="switchTab('orders')">📋 Замовлення</button>
+      <button class="tab-btn" onclick="switchTab('drivers')">🚖 Водії та GPS</button>
+      <button class="tab-btn" onclick="switchTab('routes')">🗺 Маршрути й Ціни</button>
+      <button class="tab-btn" onclick="switchTab('cities')">🏙 Міста</button>
+      <button class="tab-btn" onclick="switchTab('users')">👥 Диспетчери</button>
+    </div>
+
+    <div class="main-content">
+      
+      <!-- Вкладка 1: Замовлення -->
+      <div id="tab-orders" class="tab-content active">
+        <div class="card">
+          <h3>➕ Створити нове замовлення</h3>
+          <div class="inline-form">
+            <input type="text" id="ordClient" placeholder="Клієнт (ПІБ / Тел)">
+            <input type="text" id="ordFrom" placeholder="Звідки">
+            <input type="text" id="ordTo" placeholder="Куди">
+            <input type="number" id="ordPrice" placeholder="Ціна (грн)">
+            <button onclick="addOrder()">Створити</button>
+          </div>
         </div>
-        <table id="citiesTable">
-          <thead><tr><th>ID</th><th>Місто</th></tr></thead>
-          <tbody></tbody>
-        </table>
+
+        <div class="card">
+          <h3>📋 Список замовлень</h3>
+          <table>
+            <thead>
+              <tr><th>ID</th><th>Клієнт</th><th>Маршрут</th><th>Ціна</th><th>Статус</th><th>Водій</th><th>Дія</th></tr>
+            </thead>
+            <tbody id="ordersTable"></tbody>
+          </table>
+        </div>
       </div>
 
-      <!-- Картка водіїв -->
-      <div class="card">
-        <h3>🚖 Водії та Локації</h3>
-        <table id="driversTable">
-          <thead><tr><th>Ім'я</th><th>Телефон</th><th>Поточна локація</th></tr></thead>
-          <tbody></tbody>
-        </table>
+      <!-- Вкладка 2: Водії -->
+      <div id="tab-drivers" class="tab-content">
+        <div class="card">
+          <h3>🚖 Водії в системі</h3>
+          <table>
+            <thead>
+              <tr><th>ID</th><th>Ім'я</th><th>Телефон</th><th>Авто</th><th>Поточна локація</th><th>Оновлено</th></tr>
+            </thead>
+            <tbody id="driversTable"></tbody>
+          </table>
+        </div>
       </div>
+
+      <!-- Вкладка 3: Маршрути -->
+      <div id="tab-routes" class="tab-content">
+        <div class="card">
+          <h3>🗺 Тарифи та Маршрути</h3>
+          <div class="inline-form">
+            <input type="text" id="rtFrom" placeholder="Місто А">
+            <input type="text" id="rtTo" placeholder="Місто Б">
+            <input type="number" id="rtPrice" placeholder="Ціна">
+            <button onclick="addRoute()">Додати тариф</button>
+          </div>
+          <table>
+            <thead><tr><th>Місто А</th><th>Місто Б</th><th>Ціна (грн)</th></tr></thead>
+            <tbody id="routesTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Вкладка 4: Міста -->
+      <div id="tab-cities" class="tab-content">
+        <div class="card">
+          <h3>🏙 Міста (використовуються в боті)</h3>
+          <div class="inline-form">
+            <input type="text" id="newCity" placeholder="Назва міста">
+            <button onclick="addCity()">Додати місто</button>
+          </div>
+          <table>
+            <thead><tr><th>ID</th><th>Назва міста</th><th>Дія</th></tr></thead>
+            <tbody id="citiesTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Вкладка 5: Диспетчери -->
+      <div id="tab-users" class="tab-content">
+        <div class="card">
+          <h3>👥 Диспетчери системи</h3>
+          <table>
+            <thead><tr><th>ID</th><th>Логін</th><th>Роль</th></tr></thead>
+            <tbody id="usersTable"></tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   </div>
 
   <script>
-    const loginSection = document.getElementById('loginSection');
-    const adminPanel = document.getElementById('adminPanel');
-
-    // Перевірка чи вже залогінені
     window.onload = () => {
       const user = localStorage.getItem('user');
-      if (user) {
-        showAdmin(JSON.parse(user));
-      }
+      if (user) showAdmin(JSON.parse(user));
     };
 
-    // Обробка входу
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const username = document.getElementById('username').value;
@@ -127,7 +205,7 @@
           localStorage.setItem('user', JSON.stringify(userData));
           showAdmin(userData);
         } else {
-          showError(data.message || 'Помилка входу');
+          showError(data.message || 'Невірний логін або пароль');
         }
       } catch (err) {
         showError('Помилка сервера');
@@ -135,10 +213,10 @@
     });
 
     function showAdmin(user) {
-      loginSection.style.display = 'none';
-      adminPanel.style.display = 'block';
+      document.getElementById('loginSection').style.display = 'none';
+      document.getElementById('adminPanel').style.display = 'block';
       document.getElementById('userInfo').innerText = `Користувач: ${user.username}`;
-      loadData();
+      loadAllData();
     }
 
     function logout() {
@@ -152,32 +230,53 @@
       err.style.display = 'block';
     }
 
-    // Завантаження даних API
-    async function loadData() {
-      // Міста
-      const citiesRes = await fetch('/api/cities');
-      const cities = await citiesRes.json();
-      const citiesTb = document.querySelector('#citiesTable tbody');
-      citiesTb.innerHTML = cities.map(c => `<tr><td>${c.id}</td><td>${c.name}</td></tr>`).join('');
-
-      // Водії
-      const driversRes = await fetch('/api/drivers');
-      const drivers = await driversRes.json();
-      const driversTb = document.querySelector('#driversTable tbody');
-      driversTb.innerHTML = drivers.map(d => `<tr><td>${d.name || 'Водій'}</td><td>${d.phone || '-'}</td><td>${d.current_location || 'Не вказано'}</td></tr>`).join('');
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+      
+      event.target.classList.add('active');
+      document.getElementById(`tab-${tabName}`).classList.add('active');
     }
 
-    async function addCity() {
-      const input = document.getElementById('newCity');
-      if (!input.value.trim()) return;
+    // --- ЗАВАНТАЖЕННЯ ДАНИХ ДЛЯ ВСІХ ВКЛАДОК ---
+    async function loadAllData() {
+      // 1. Міста
+      const cities = await (await fetch('/api/cities')).json();
+      document.querySelector('#citiesTable').innerHTML = cities.map(c => 
+        `<tr><td>${c.id}</td><td>${c.name}</td><td><button class="btn-danger" onclick="deleteCity(${c.id})">Видалити</button></td></tr>`
+      ).join('');
 
-      await fetch('/api/cities', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: input.value.trim() })
-      });
-      input.value = '';
-      loadData();
+      // 2. Водії
+      const drivers = await (await fetch('/api/drivers')).json();
+      document.querySelector('#driversTable').innerHTML = drivers.map(d => 
+        `<tr><td>${d.id}</td><td>${d.name || 'Новий'}</td><td>${d.phone || '-'}</td><td>${d.car_info || '-'}</td><td><span class="badge badge-yellow">${d.current_location || 'Не вказано'}</span></td><td>${d.location_updated_at ? new Date(d.location_updated_at).toLocaleString() : '-'}</td></tr>`
+      ).join('');
+
+      // 3. Маршрути
+      const routes = await (await fetch('/api/routes')).json();
+      document.querySelector('#routesTable').innerHTML = routes.map(r => 
+        `<tr><td>${r.from_city}</td><td>${r.to_city}</td><td>${r.price} грн</td></tr>`
+      ).join('');
+
+      // 4. Диспетчери
+      const users = await (await fetch('/api/dispatchers')).json();
+      document.querySelector('#usersTable').innerHTML = users.map(u => 
+        `<tr><td>${u.id}</td><td>${u.username}</td><td><span class="badge badge-green">${u.role}</span></td></tr>`
+      ).join('');
+    }
+
+    // Дії з містами
+    async function addCity() {
+      const name = document.getElementById('newCity').value.trim();
+      if (!name) return;
+      await fetch('/api/cities', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ name }) });
+      document.getElementById('newCity').value = '';
+      loadAllData();
+    }
+
+    async function deleteCity(id) {
+      await fetch(`/api/cities/${id}`, { method: 'DELETE' });
+      loadAllData();
     }
   </script>
 </body>
