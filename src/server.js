@@ -6,6 +6,7 @@ const bcrypt = require('bcryptjs');
 
 const app = express();
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 const pool = new Pool({
@@ -60,41 +61,56 @@ async function initSchema() {
   }
 }
 
-// --- API АВТОРИЗАЦІЇ (ЛОГІН) ---
+// --- УНІВЕРСАЛЬНА ОБРОБКА АВТОРИЗАЦІЇ ---
 const handleLogin = async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const username = req.body.username || req.body.login;
+    const password = req.body.password || req.body.pass;
+
     if (!username || !password) {
-      return res.status(400).json({ error: 'Введіть логін та пароль' });
+      return res.status(400).json({ status: 'error', message: 'Введіть логін та пароль' });
     }
 
-    const result = await pool.query('SELECT * FROM dispatchers WHERE username = $1', [username]);
+    const result = await pool.query('SELECT * FROM dispatchers WHERE username = $1', [username.trim()]);
     if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'Невірний логін або пароль' });
+      return res.status(401).json({ status: 'error', message: 'Невірний логін або пароль' });
     }
 
     const user = result.rows[0];
     const isValid = await bcrypt.compare(password, user.password_hash);
 
     if (!isValid) {
-      return res.status(401).json({ error: 'Невірний логін або пароль' });
+      return res.status(401).json({ status: 'error', message: 'Невірний логін або пароль' });
     }
 
-    // Повертаємо успішну відповідь та дані користувача
+    // Універсальний JSON з усіма популярними форматами відповіді
     res.json({
       success: true,
-      user: { id: user.id, username: user.username, role: user.role }
+      ok: true,
+      status: 'success',
+      token: 'fake-jwt-token-for-admin',
+      role: user.role,
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role
+      }
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Помилка авторизації:', err);
+    res.status(500).json({ status: 'error', message: err.message });
   }
 };
 
-// Підтримуємо обидва можливі варіанти URL для логіну з фронтенду
+// Підтримуємо всі можливі URL-маршрути авторизації
 app.post('/api/login', handleLogin);
 app.post('/api/dispatchers/login', handleLogin);
+app.post('/api/auth/login', handleLogin);
+app.post('/api/users/login', handleLogin);
 
-// --- API ДЛЯ МІСТ В АДМІНЦІ ---
+// --- REST API МАРШРУТИ ДЛЯ АДМІНКИ ---
+
+// МІСТА
 app.get('/api/cities', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM cities ORDER BY name ASC');
@@ -119,6 +135,36 @@ app.delete('/api/cities/:id', async (req, res) => {
   try {
     await pool.query('DELETE FROM cities WHERE id = $1', [req.params.id]);
     res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ДИСПЕТЧЕРИ
+app.get('/api/dispatchers', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT id, username, role FROM dispatchers ORDER BY id ASC');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ВОДІЇ
+app.get('/api/drivers', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM drivers ORDER BY id ASC');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// МАРШРУТИ
+app.get('/api/routes', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM routes ORDER BY id ASC');
+    res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -188,7 +234,7 @@ if (bot) {
   });
 }
 
-// SPA роутинг
+// SPA роутинг (усі інші запити віддають index.html)
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
@@ -198,7 +244,7 @@ const PORT = process.env.PORT || 3000;
 async function main() {
   await initSchema();
 
-  // ✅ ГАРАНТОВАНЕ СТВОРЕННЯ/ОНОВЛЕННЯ АДМІНА (admin / admin123)
+  // ✅ ГАРАНТОВАНЕ СТВОРЕННЯ / ОНОВЛЕННЯ АДМІНА
   try {
     const hash = await bcrypt.hash('admin123', 10);
     await pool.query(
