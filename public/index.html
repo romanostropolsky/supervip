@@ -3,88 +3,181 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Вхід диспетчера</title>
+  <title>Диспетчерська система</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    body { background-color: #0f172a; color: #f8fafc; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+    body { background-color: #0f172a; color: #f8fafc; min-height: 100vh; display: flex; flex-direction: column; }
+    
+    /* Секція входу */
+    .login-container { display: flex; justify-content: center; align-items: center; min-height: 100vh; }
     .login-card { background: #1e293b; border: 1px solid #334155; padding: 2.5rem; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-    .login-card h2 { font-size: 1.8rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .login-card h2 { font-size: 1.8rem; margin-bottom: 0.5rem; }
     .login-card p { color: #94a3b8; font-size: 0.9rem; margin-bottom: 1.5rem; }
     .form-group { margin-bottom: 1.2rem; }
-    .form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.4rem; color: #cbd5e1; }
-    .form-group input { width: 100%; padding: 0.75rem 1rem; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 1rem; outline: none; }
-    .form-group input:focus { border-color: #f59e0b; }
-    .btn-submit { width: 100%; padding: 0.8rem; background: #eab308; color: #0f172a; border: none; border-radius: 6px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: background 0.2s; margin-top: 0.5rem; }
+    .form-group label { display: block; font-size: 0.85rem; margin-bottom: 0.4rem; color: #cbd5e1; }
+    .form-group input { width: 100%; padding: 0.75rem 1rem; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; outline: none; }
+    .btn-submit { width: 100%; padding: 0.8rem; background: #eab308; color: #0f172a; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; }
     .btn-submit:hover { background: #d97706; }
     .error-msg { color: #ef4444; font-size: 0.85rem; margin-top: 1rem; display: none; text-align: center; }
+
+    /* Панель адмінки */
+    #adminPanel { display: none; padding: 2rem; max-width: 1200px; margin: 0 auto; width: 100%; }
+    header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 1rem; margin-bottom: 2rem; }
+    .btn-logout { background: #ef4444; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; }
+    
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 1.5rem; }
+    .card h3 { margin-bottom: 1rem; color: #f59e0b; border-bottom: 1px solid #334155; padding-bottom: 0.5rem; }
+    
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    th, td { text-align: left; padding: 0.75rem; border-bottom: 1px solid #334155; font-size: 0.9rem; }
+    th { color: #94a3b8; }
+    
+    .add-form { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+    .add-form input { flex: 1; padding: 0.5rem; background: #0f172a; border: 1px solid #475569; border-radius: 4px; color: white; }
+    .add-form button { background: #22c55e; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; }
   </style>
 </head>
 <body>
 
-  <div class="login-card">
-    <h2>Вхід диспетчера</h2>
-    <p>Диспетчерська система обліку замовлень</p>
-    
-    <form id="loginForm">
-      <div class="form-group">
-        <label for="username">Логін</label>
-        <input type="text" id="username" name="username" required autocomplete="username">
-      </div>
+  <!-- ФОРМА ВХОДУ -->
+  <div id="loginSection" class="login-container">
+    <div class="login-card">
+      <h2>Вхід диспетчера</h2>
+      <p>Диспетчерська система обліку замовлень</p>
       
-      <div class="form-group">
-        <label for="password">Пароль</label>
-        <input type="password" id="password" name="password" required autocomplete="current-password">
+      <form id="loginForm">
+        <div class="form-group">
+          <label>Логін</label>
+          <input type="text" id="username" required>
+        </div>
+        <div class="form-group">
+          <label>Пароль</label>
+          <input type="password" id="password" required>
+        </div>
+        <button type="submit" class="btn-submit" id="submitBtn">Увійти</button>
+        <div id="errorMsg" class="error-msg"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- АДМІН ПАНЕЛЬ -->
+  <div id="adminPanel">
+    <header>
+      <h2>Панель керування диспетчера</h2>
+      <div>
+        <span id="userInfo" style="margin-right: 15px; color: #94a3b8;"></span>
+        <button class="btn-logout" onclick="logout()">Вийти</button>
+      </div>
+    </header>
+
+    <div class="grid">
+      <!-- Картка міст -->
+      <div class="card">
+        <h3>🏙 Список міст</h3>
+        <div class="add-form">
+          <input type="text" id="newCity" placeholder="Назва міста">
+          <button onclick="addCity()">Додати</button>
+        </div>
+        <table id="citiesTable">
+          <thead><tr><th>ID</th><th>Місто</th></tr></thead>
+          <tbody></tbody>
+        </table>
       </div>
 
-      <button type="submit" class="btn-submit" id="submitBtn">Увійти</button>
-      <div id="errorMsg" class="error-msg"></div>
-    </form>
+      <!-- Картка водіїв -->
+      <div class="card">
+        <h3>🚖 Водії та Локації</h3>
+        <table id="driversTable">
+          <thead><tr><th>Ім'я</th><th>Телефон</th><th>Поточна локація</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <script>
-    const form = document.getElementById('loginForm');
-    const errorMsg = document.getElementById('errorMsg');
-    const submitBtn = document.getElementById('submitBtn');
+    const loginSection = document.getElementById('loginSection');
+    const adminPanel = document.getElementById('adminPanel');
 
-    form.addEventListener('submit', async (e) => {
+    // Перевірка чи вже залогінені
+    window.onload = () => {
+      const user = localStorage.getItem('user');
+      if (user) {
+        showAdmin(JSON.parse(user));
+      }
+    };
+
+    // Обробка входу
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      
-      errorMsg.style.display = 'none';
-      submitBtn.disabled = true;
-      submitBtn.innerText = 'Вхід...';
-
       const username = document.getElementById('username').value;
       const password = document.getElementById('password').value;
 
       try {
-        const response = await fetch('/api/login', {
+        const res = await fetch('/api/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password })
         });
+        const data = await res.json();
 
-        const data = await response.json();
-
-        if (response.ok && (data.success || data.ok || data.status === 'success')) {
-          localStorage.setItem('user', JSON.stringify(data.user || { username, role: data.role }));
-          localStorage.setItem('token', data.token || 'fake-jwt-token-for-admin');
-          
-          alert('Авторизація успішна!');
-          window.location.reload();
+        if (res.ok && (data.success || data.ok)) {
+          const userData = data.user || { username, role: data.role };
+          localStorage.setItem('user', JSON.stringify(userData));
+          showAdmin(userData);
         } else {
-          showError(data.message || 'Невірний логін або пароль');
+          showError(data.message || 'Помилка входу');
         }
       } catch (err) {
-        showError('Помилка зв\'язку з сервером');
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerText = 'Увійти';
+        showError('Помилка сервера');
       }
     });
 
+    function showAdmin(user) {
+      loginSection.style.display = 'none';
+      adminPanel.style.display = 'block';
+      document.getElementById('userInfo').innerText = `Користувач: ${user.username}`;
+      loadData();
+    }
+
+    function logout() {
+      localStorage.removeItem('user');
+      location.reload();
+    }
+
     function showError(msg) {
-      errorMsg.innerText = msg;
-      errorMsg.style.display = 'block';
+      const err = document.getElementById('errorMsg');
+      err.innerText = msg;
+      err.style.display = 'block';
+    }
+
+    // Завантаження даних API
+    async function loadData() {
+      // Міста
+      const citiesRes = await fetch('/api/cities');
+      const cities = await citiesRes.json();
+      const citiesTb = document.querySelector('#citiesTable tbody');
+      citiesTb.innerHTML = cities.map(c => `<tr><td>${c.id}</td><td>${c.name}</td></tr>`).join('');
+
+      // Водії
+      const driversRes = await fetch('/api/drivers');
+      const drivers = await driversRes.json();
+      const driversTb = document.querySelector('#driversTable tbody');
+      driversTb.innerHTML = drivers.map(d => `<tr><td>${d.name || 'Водій'}</td><td>${d.phone || '-'}</td><td>${d.current_location || 'Не вказано'}</td></tr>`).join('');
+    }
+
+    async function addCity() {
+      const input = document.getElementById('newCity');
+      if (!input.value.trim()) return;
+
+      await fetch('/api/cities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: input.value.trim() })
+      });
+      input.value = '';
+      loadData();
     }
   </script>
 </body>
