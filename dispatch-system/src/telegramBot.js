@@ -85,6 +85,13 @@ bot.start(async (ctx) => {
   const driver = rows[0];
   if (!driver) return ctx.reply('Код не знайдено. Перевірте код у диспетчера.');
 
+  // Якщо цей Telegram-акаунт уже прив'язаний до іншого (старого/тестового) запису водія —
+  // відв'язуємо його звідти, щоб уникнути конфлікту унікальності
+  await pool.query(
+    'UPDATE drivers SET telegram_chat_id=NULL WHERE telegram_chat_id=$1 AND id<>$2',
+    [String(ctx.chat.id), driver.id]
+  );
+
   await pool.query(
     'UPDATE drivers SET telegram_chat_id=$1, link_code=NULL WHERE id=$2',
     [String(ctx.chat.id), driver.id]
@@ -197,6 +204,11 @@ bot.action(/advance_(\d+)/, async (ctx) => {
     }
   }
   await ctx.answerCbQuery('Оновлено');
+});
+
+bot.catch((err, ctx) => {
+  console.error('Помилка бота:', err);
+  try { ctx.reply('Сталася технічна помилка. Спробуйте ще раз або зверніться до диспетчера.'); } catch (e) {}
 });
 } // кінець блоку if (botEnabled)
 
