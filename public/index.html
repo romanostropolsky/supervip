@@ -44,6 +44,7 @@
     .badge.sent { background: #f59e0b; color: #000; }
     .badge.completed { background: #10b981; color: #fff; }
     .badge.cancelled { background: #ef4444; color: #fff; }
+    .row-flex { display: flex; gap: 10px; }
   </style>
 </head>
 <body>
@@ -84,22 +85,52 @@
       } catch(e) {}
     }
 
+    // Зберігаємо тарифи в localStorage, щоб диспетчер міг їх налаштовувати
+    function getTariffs() {
+      const saved = localStorage.getItem('custom_tariffs');
+      if (saved) return JSON.parse(saved);
+      return [
+        { id: 1, from: 'Київ', to: 'Умань', price: 1500 },
+        { id: 2, from: 'Київ', to: 'Одеса', price: 3500 },
+        { id: 3, from: 'Київ', to: 'Львів', price: 4000 }
+      ];
+    }
+
+    function saveTariffs(tariffs) {
+      localStorage.setItem('custom_tariffs', JSON.stringify(tariffs));
+    }
+
     const pages = {
       'new-order': async (el) => {
         let cities = [];
         try { cities = await api('/cities'); } catch(e) {}
         const cityList = Array.isArray(cities) ? cities : (cities.cities || cities.data || []);
-        
+        const cityNames = cityList.map(c => c.name);
+        const tariffs = getTariffs();
+
         const [config, drivers] = await Promise.all([api('/config'), api('/drivers')]);
+        
         el.innerHTML = `
           <h2 class="page-title">Нове замовлення</h2>
           <div class="panel">
             <form id="orderForm">
+              <div class="row-flex">
+                <div class="form-group" style="flex:1;">
+                  <label>Звідки</label>
+                  <select id="fromCity">
+                    ${cityNames.map(c => `<option value="${c}">${c}</option>`).join('')}
+                  </select>
+                </div>
+                <div class="form-group" style="flex:1;">
+                  <label>Куди</label>
+                  <select id="toCity">
+                    ${cityNames.map(c => `<option value="${c}" ${c === 'Умань' ? 'selected' : ''}>${c}</option>`).join('')}
+                  </select>
+                </div>
+              </div>
               <div class="form-group">
-                <label>Маршрут (Місто)</label>
-                <select id="routeId">
-                  ${cityList.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
-                </select>
+                <label>Розрахована ціна (грн)</label>
+                <input type="text" id="routePrice" readonly style="font-weight:bold; color:var(--accent);">
               </div>
               <div class="form-group">
                 <label>Клас авто</label>
@@ -130,15 +161,31 @@
             </form>
           </div>`;
 
+        const updatePrice = () => {
+          const from = document.getElementById('fromCity').value;
+          const to = document.getElementById('toCity').value;
+          const found = tariffs.find(t => t.from === from && t.to === to);
+          document.getElementById('routePrice').value = found ? found.price + ' грн' : '1000 грн (базова)';
+        };
+
+        document.getElementById('fromCity').onchange = updatePrice;
+        document.getElementById('toCity').onchange = updatePrice;
+        updatePrice();
+
         document.getElementById('orderForm').onsubmit = async (e) => {
           e.preventDefault();
+          const from = document.getElementById('fromCity').value;
+          const to = document.getElementById('toCity').value;
+          const found = tariffs.find(t => t.from === from && t.to === to);
+          
           const data = {
-            routeId: document.getElementById('routeId').value,
+            routeId: found ? found.id : 1,
             carTypeId: document.getElementById('carTypeId').value,
             passengerName: document.getElementById('passengerName').value,
             passengerPhone: document.getElementById('passengerPhone').value,
             pickupTime: document.getElementById('pickupTime').value,
-            driverId: document.getElementById('driverId').value || null
+            driverId: document.getElementById('driverId').value || null,
+            routeDescription: `${from} → ${to}`
           };
           const res = await api('/orders', 'POST', data);
           if (res.error) alert(res.error);
@@ -149,21 +196,15 @@
         };
       },
       'orders': async (el) => {
-        const [orders, citiesRes] = await Promise.all([api('/orders'), api('/cities')]);
-        const cityList = Array.isArray(citiesRes) ? citiesRes : (citiesRes.cities || citiesRes.data || []);
-        const cityMap = {};
-        cityList.forEach(c => {
-          cityMap[c.id] = c.name;
-        });
-        
+        const orders = await api('/orders');
         el.innerHTML = `
           <h2 class="page-title">Замовлення</h2>
           <div class="panel" style="max-width: 100%;">
             <table>
-              <tr><th>Маршрут / Місто</th><th>Пасажир</th><th>Телефон</th><th>Час подачі</th><th>Статус</th></tr>
+              <tr><th>ID</th><th>Пасажир</th><th>Телефон</th><th>Час подачі</th><th>Статус</th></tr>
               ${orders.map(o => `
                 <tr>
-                  <td>${cityMap[o.route_id] || 'Місто #' + o.route_id}</td>
+                  <td>#${o.id}</td>
                   <td>${o.passenger_name || '—'}</td>
                   <td>${o.passenger_phone || '—'}</td>
                   <td>${o.pickup_time ? o.pickup_time.replace('T', ' ') : '—'}</td>
@@ -194,20 +235,47 @@
         let cities = [];
         try { cities = await api('/cities'); } catch(e) {}
         const cityList = Array.isArray(cities) ? cities : (cities.cities || cities.data || []);
-        
+        const cityNames = cityList.map(c => c.name);
+        const tariffs = getTariffs();
+
         el.innerHTML = `
-          <h2 class="page-title">Маршрути і тарифи (Міста)</h2>
+          <h2 class="page-title">Маршрути і тарифи</h2>
           <div class="panel" style="max-width: 100%;">
+            <div style="margin-bottom: 20px; background: var(--panel-2); padding: 15px; border-radius: 6px;">
+              <h3 style="font-size: 14px; margin-bottom: 10px; color: var(--accent);">Додати новий маршрут / тариф</h3>
+              <form id="addTariffForm" style="display: flex; gap: 10px;">
+                <select id="newFrom" style="flex:1;">${cityNames.map(c => `<option value="${c}">${c}</option>`).join('')}</select>
+                <select id="newTo" style="flex:1;">${cityNames.map(c => `<option value="${c}">${c}</option>`).join('')}</select>
+                <input type="number" id="newPrice" placeholder="Ціна (грн)" style="flex:1;" required>
+                <button type="submit">Додати</button>
+              </form>
+            </div>
             <table>
-              <tr><th>ID</th><th>Назва міста</th></tr>
-              ${cityList.map(c => `
+              <tr><th>Звідки</th><th>Куди</th><th>Ціна</th><th>Дії</th></tr>
+              ${tariffs.map((t, index) => `
                 <tr>
-                  <td>${c.id}</td>
-                  <td>${c.name}</td>
+                  <td>${t.from}</td>
+                  <td>${t.to}</td>
+                  <td><b>${t.price} грн</b></td>
+                  <td><button onclick="window.deleteTariff(${index})" style="background:var(--bad); color:#fff; padding:6px 12px; font-size:12px;">Видалити</button></td>
                 </tr>
               `).join('')}
             </table>
           </div>`;
+
+        document.getElementById('addTariffForm').onsubmit = (e) => {
+          e.preventDefault();
+          const from = document.getElementById('newFrom').value;
+          const to = document.getElementById('newTo').value;
+          const price = Number(document.getElementById('newPrice').value);
+          if (from === to) {
+            alert("Місто відправлення і призначення не можуть збігатися!");
+            return;
+          }
+          tariffs.push({ id: Date.now(), from, to, price });
+          saveTariffs(tariffs);
+          switchPage('routes-tariffs');
+        };
       },
       'register-driver': async (el) => {
         el.innerHTML = `
@@ -233,7 +301,7 @@
         document.getElementById('driverRegForm').onsubmit = async (e) => {
           e.preventDefault();
           const data = {
-            name: document.getElementById('driverName').value,
+            name: document.getElementById('driverName,').value || document.getElementById('driverName').value,
             phone: document.getElementById('driverPhone').value,
             telegram_id: document.getElementById('driverTgId').value || null
           };
@@ -278,6 +346,13 @@
           document.getElementById('dispatcherForm').reset();
         };
       }
+    };
+
+    window.deleteTariff = function(index) {
+      const tariffs = getTariffs();
+      tariffs.splice(index, 1);
+      saveTariffs(tariffs);
+      switchPage('routes-tariffs');
     };
 
     function switchPage(pageName) {
