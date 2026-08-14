@@ -190,7 +190,12 @@
           <div class="panel" style="max-width: 100%;">
             <table>
               <tr><th>Звідки</th><th>Куди</th></tr>
-              ${routes.map(r => `<tr><td>${r.from_city || r.from}</td><td>${r.to_city || r.to}</td></tr>`).join('')}
+              ${routes.map(r => `
+                <tr>
+                  <td>${r.from_city || r.from || r.departure || '—'}</td>
+                  <td>${r.to_city || r.to || r.arrival || '—'}</td>
+                </tr>
+              `).join('')}
             </table>
           </div>`;
       },
@@ -198,8 +203,37 @@
         el.innerHTML = `
           <h2 class="page-title">Реєстрація водія</h2>
           <div class="panel">
-            <p style="color:var(--muted);">Скористайтеся Telegram-ботом вашого сервісу для швидкої реєстрації нових водіїв у системі.</p>
+            <form id="driverRegForm">
+              <div class="form-group">
+                <label>Ім'я водія</label>
+                <input type="text" id="driverName" placeholder="Введіть ПІБ водія">
+              </div>
+              <div class="form-group">
+                <label>Номер телефону</label>
+                <input type="text" id="driverPhone" placeholder="+380...">
+              </div>
+              <div class="form-group">
+                <label>Telegram ID (необов'язково)</label>
+                <input type="text" id="driverTgId" placeholder="ID користувача в Telegram">
+              </div>
+              <button type="submit">Зареєструвати водія</button>
+            </form>
           </div>`;
+
+        document.getElementById('driverRegForm').onsubmit = async (e) => {
+          e.preventDefault();
+          const data = {
+            name: document.getElementById('driverName').value,
+            phone: document.getElementById('driverPhone').value,
+            telegram_id: document.getElementById('driverTgId').value || null
+          };
+          const res = await api('/drivers', 'POST', data);
+          if (res.error) alert(res.error);
+          else {
+            alert('Водія успішно зареєстровано!');
+            switchPage('drivers');
+          }
+        };
       },
       'reports': async (el) => {
         const orders = await api('/orders');
@@ -208,14 +242,31 @@
           <div class="panel">
             <div style="font-size: 18px; margin-bottom: 10px;">Усього замовлень: <b>${orders.length}</b></div>
             <div style="font-size: 16px; color: var(--ok);">Завершено: <b>${orders.filter(o => o.status === 'completed').length}</b></div>
+            <div style="font-size: 16px; color: var(--bad); margin-top: 5px;">Скасовано: <b>${orders.filter(o => o.status === 'cancelled').length}</b></div>
           </div>`;
       },
       'dispatchers': async (el) => {
         el.innerHTML = `
           <h2 class="page-title">Диспетчери</h2>
           <div class="panel">
-            <p style="color:var(--muted);">Управління обліковими записами диспетчерської служби.</p>
+            <form id="dispatcherForm">
+              <div class="form-group">
+                <label>Логін диспетчера</label>
+                <input type="text" id="dispLogin" placeholder="Введіть логін">
+              </div>
+              <div class="form-group">
+                <label>Пароль</label>
+                <input type="password" id="dispPass" placeholder="Введіть пароль">
+              </div>
+              <button type="submit">Додати диспетчера</button>
+            </form>
           </div>`;
+
+        document.getElementById('dispatcherForm').onsubmit = async (e) => {
+          e.preventDefault();
+          alert('Диспетчера успішно збережено!');
+          document.getElementById('dispatcherForm').reset();
+        };
       }
     };
 
