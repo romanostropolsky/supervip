@@ -29,7 +29,7 @@
     .top-stat { font-size: 13px; color: var(--muted); }
     .top-stat span { color: var(--accent); font-weight: bold; }
     .content { padding: 20px; overflow-y: auto; flex: 1; }
-    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px; max-width: 800px; }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px; max-width: 900px; }
     .page-title { font-size: 20px; margin-bottom: 20px; font-weight: 600; }
     .form-group { margin-bottom: 15px; }
     label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; }
@@ -53,7 +53,10 @@
       <div class="menu-item active" data-page="new-order">Нове замовлення</div>
       <div class="menu-item" data-page="orders">Замовлення</div>
       <div class="menu-item" data-page="drivers">Водії</div>
+      <div class="menu-item" data-page="routes-tariffs">Маршрути і тарифи</div>
+      <div class="menu-item" data-page="register-driver">Реєстрація водія</div>
       <div class="menu-item" data-page="reports">Звіт</div>
+      <div class="menu-item" data-page="dispatchers">Диспетчери</div>
     </div>
   </aside>
   <main>
@@ -83,7 +86,7 @@
 
     const pages = {
       'new-order': async (el) => {
-        const [routes, carTypes, drivers] = await Promise.all([api('/cities'), api('/config'), api('/drivers')]);
+        const [routes, config, drivers] = await Promise.all([api('/cities'), api('/config'), api('/drivers')]);
         el.innerHTML = `
           <h2 class="page-title">Нове замовлення</h2>
           <div class="panel">
@@ -91,13 +94,13 @@
               <div class="form-group">
                 <label>Маршрут</label>
                 <select id="routeId">
-                  ${routes.map(r => `<option value="${r.id}">${r.from_city} → ${r.to_city}</option>`).join('')}
+                  ${routes.map(r => `<option value="${r.id}">${r.from_city || r.from} → ${r.to_city || r.to}</option>`).join('')}
                 </select>
               </div>
               <div class="form-group">
                 <label>Клас авто</label>
                 <select id="carTypeId">
-                  ${carTypes.carTypes ? carTypes.carTypes.map(c => `<option value="${c.id}">${c.name}</option>`).join('') : ''}
+                  ${config.carTypes ? config.carTypes.map(c => `<option value="${c.id}">${c.name}</option>`).join('') : ''}
                 </select>
               </div>
               <div class="form-group">
@@ -144,7 +147,7 @@
       'orders': async (el) => {
         const [orders, routes] = await Promise.all([api('/orders'), api('/cities')]);
         const routeMap = {};
-        routes.forEach(r => routeMap[r.id] = `${r.from_city} → ${r.to_city}`);
+        routes.forEach(r => routeMap[r.id] = `${r.from_city || r.from} → ${r.to_city || r.to}`);
         
         el.innerHTML = `
           <h2 class="page-title">Замовлення</h2>
@@ -153,7 +156,7 @@
               <tr><th>Маршрут</th><th>Пасажир</th><th>Телефон</th><th>Час подачі</th><th>Статус</th></tr>
               ${orders.map(o => `
                 <tr>
-                  <td>${routeMap[o.route_id] || '---'}</td>
+                  <td>${routeMap[o.route_id] || 'Маршрут #' + o.route_id}</td>
                   <td>${o.passenger_name || '—'}</td>
                   <td>${o.passenger_phone || '—'}</td>
                   <td>${o.pickup_time ? o.pickup_time.replace('T', ' ') : '—'}</td>
@@ -180,6 +183,24 @@
             </table>
           </div>`;
       },
+      'routes-tariffs': async (el) => {
+        const routes = await api('/cities');
+        el.innerHTML = `
+          <h2 class="page-title">Маршрути і тарифи</h2>
+          <div class="panel" style="max-width: 100%;">
+            <table>
+              <tr><th>Звідки</th><th>Куди</th></tr>
+              ${routes.map(r => `<tr><td>${r.from_city || r.from}</td><td>${r.to_city || r.to}</td></tr>`).join('')}
+            </table>
+          </div>`;
+      },
+      'register-driver': async (el) => {
+        el.innerHTML = `
+          <h2 class="page-title">Реєстрація водія</h2>
+          <div class="panel">
+            <p style="color:var(--muted);">Скористайтеся Telegram-ботом вашого сервісу для швидкої реєстрації нових водіїв у системі.</p>
+          </div>`;
+      },
       'reports': async (el) => {
         const orders = await api('/orders');
         el.innerHTML = `
@@ -187,6 +208,13 @@
           <div class="panel">
             <div style="font-size: 18px; margin-bottom: 10px;">Усього замовлень: <b>${orders.length}</b></div>
             <div style="font-size: 16px; color: var(--ok);">Завершено: <b>${orders.filter(o => o.status === 'completed').length}</b></div>
+          </div>`;
+      },
+      'dispatchers': async (el) => {
+        el.innerHTML = `
+          <h2 class="page-title">Диспетчери</h2>
+          <div class="panel">
+            <p style="color:var(--muted);">Управління обліковими записами диспетчерської служби.</p>
           </div>`;
       }
     };
