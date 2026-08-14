@@ -29,7 +29,7 @@
     .top-stat { font-size: 13px; color: var(--muted); }
     .top-stat span { color: var(--accent); font-weight: bold; }
     .content { padding: 20px; overflow-y: auto; flex: 1; }
-    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px; max-width: 900px; }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px; max-width: 900px; margin-bottom: 40px; }
     .page-title { font-size: 20px; margin-bottom: 20px; font-weight: 600; }
     .form-group { margin-bottom: 15px; }
     label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; }
@@ -85,7 +85,6 @@
       } catch(e) {}
     }
 
-    // Зберігаємо тарифи в localStorage, щоб диспетчер міг їх налаштовувати
     function getTariffs() {
       const saved = localStorage.getItem('custom_tariffs');
       if (saved) return JSON.parse(saved);
@@ -157,7 +156,7 @@
                   ${drivers.filter(d => d.status === 'online').map(d => `<option value="${d.id}">${d.name}</option>`).join('')}
                 </select>
               </div>
-              <button type="submit">Створити замовлення</button>
+              <button type="submit" style="margin-top: 10px;">Створити замовлення</button>
             </form>
           </div>`;
 
@@ -301,7 +300,7 @@
         document.getElementById('driverRegForm').onsubmit = async (e) => {
           e.preventDefault();
           const data = {
-            name: document.getElementById('driverName,').value || document.getElementById('driverName').value,
+            name: document.getElementById('driverName').value,
             phone: document.getElementById('driverPhone').value,
             telegram_id: document.getElementById('driverTgId').value || null
           };
