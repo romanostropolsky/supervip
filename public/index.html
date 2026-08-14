@@ -50,16 +50,9 @@
   .status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;}
   .status-dot.online{background:var(--ok);} .status-dot.offline{background:var(--muted);}
   .empty{color:var(--muted);font-size:13px;padding:20px;text-align:center;}
-  .grid-price{width:100%;border-collapse:collapse;} .grid-price th,.grid-price td{border:1px solid var(--border);padding:6px;text-align:center;}
-  .grid-price input{width:64px;padding:5px;font-size:12px;text-align:center;} .grid-price .rowhead{text-align:left;font-weight:700;font-size:12.5px;}
-  .stat-strip{display:flex;gap:14px;margin-bottom:18px;flex-wrap:wrap;}
-  .stat-box{flex:1;min-width:140px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
-  .stat-box .n{font-family:var(--mono);font-size:24px;color:var(--accent);font-weight:700;}
-  .stat-box .l{font-size:11px;color:var(--muted);text-transform:uppercase;}
   .toast{position:fixed;bottom:20px;right:20px;background:var(--panel);border:1px solid var(--accent);padding:12px 18px;border-radius:8px;font-size:13px;z-index:100;max-width:340px;}
   .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;}
   .login-box{width:320px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:28px;}
-  .code-box{font-family:var(--mono);background:var(--panel-2);border:1px dashed var(--border);padding:10px;border-radius:6px;margin-top:8px;font-size:13px;}
   @media (max-width:800px){.body-row{flex-direction:column;} .sidebar{width:100%;display:flex;flex-wrap:wrap;gap:4px;} .main{padding:16px;}}
 </style>
 </head>
@@ -87,20 +80,11 @@ function showToast(msg){ state.toast=msg; render(); setTimeout(()=>{state.toast=
 function logout(){ token=null; role=null; localStorage.removeItem('token'); localStorage.removeItem('role'); render(); }
 
 const STATUS_LABELS = {new:'Нове',sent:'Надіслано водію',confirmed:'Підтверджено',in_progress:'В дорозі',completed:'Завершено',cancelled:'Скасовано'};
-function routeStages(r){ const s=['pickup']; if(r.stop1)s.push('stop1'); if(r.stop2)s.push('stop2'); s.push('end'); return s; }
-function stageLabel(r,stage){
-  if(stage==='pickup') return 'Забрав у '+r.start_city;
-  if(stage==='stop1') return 'Зупинка: '+r.stop1;
-  if(stage==='stop2') return 'Зупинка: '+r.stop2;
-  if(stage==='end') return 'Прибув до '+r.end_city;
-  return '—';
-}
 function priceOf(cfg, routeId, carTypeId){
   const p = cfg.prices.find(p=>String(p.route_id)===String(routeId) && String(p.car_type_id)===String(carTypeId));
   return p || {price:0, commission:0};
 }
 
-/* ===================== ROOT RENDER ===================== */
 async function render(){
   const root = document.getElementById('root');
   if(!token){ root.innerHTML = loginHtml(); bindLogin(); return; }
@@ -162,7 +146,6 @@ async function doLogin(){
   }catch(e){ document.getElementById('loginErr').textContent = e.message; }
 }
 
-/* ===================== SIDEBAR / TABS ===================== */
 const BASE_TABS = [['new_order','Нове замовлення'],['orders','Замовлення'],['drivers','Водії'],['routes','Маршрути і тарифи'],['register','Реєстрація водія'],['reports','Звіт']];
 function currentTabs(){ return role==='admin' ? [...BASE_TABS, ['dispatchers','Диспетчери']] : BASE_TABS; }
 function renderSidebar(){
@@ -180,7 +163,6 @@ function renderMain(){
   if(state.tab==='dispatchers') return renderDispatchers(main);
 }
 
-/* ===================== NEW ORDER ===================== */
 function renderNewOrder(main){
   const cfg = state.config;
   main.innerHTML = `
@@ -191,8 +173,8 @@ function renderNewOrder(main){
         <div><label>Клас авто</label><select id="f_car">${cfg.carTypes.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')}</select></div>
       </div>
       <div class="row">
-        <div><label>Ім'я пасажира</label><input type="text" id="f_passenger_name"></div>
-        <div><label>Телефон</label><input type="tel" id="f_passenger_phone"></div>
+        <div><label>Ім'я пасажира</label><input type="text" id="f_passenger_name" placeholder="Іван"></div>
+        <div><label>Телефон</label><input type="tel" id="f_passenger_phone" placeholder="+380..."></div>
       </div>
       <div class="row">
         <div><label>Час подачі</label><input type="text" id="f_pickup_time" placeholder="14:00"></div>
@@ -234,14 +216,13 @@ async function submitOrder(){
   const pickupTime = document.getElementById('f_pickup_time').value.trim();
   const arrivalTime = document.getElementById('f_arrival_time').value.trim();
   try{
-    const order = await api('/orders', {method:'POST', body:{routeId,carTypeId,passengers,luggage,driverId,passengerName,passengerPhone,pickupTime,arrivalTime}});
+    await api('/orders', {method:'POST', body:{routeId,carTypeId,passengers,luggage,driverId,passengerName,passengerPhone,pickupTime,arrivalTime}});
     showToast('Замовлення створено');
     state.orders = await api('/orders'); state.drivers = await api('/drivers');
     state.tab='orders'; render();
   }catch(e){ showToast(e.message); }
 }
 
-/* ===================== ORDERS ===================== */
 function renderOrders(main){
   const cfg = state.config;
   const orders = [...state.orders].sort((a,b)=> new Date(b.created_at)-new Date(a.created_at));
@@ -250,7 +231,7 @@ function renderOrders(main){
     <div id="editBox"></div>
     <div class="panel">
       ${orders.length===0?'<div class="empty">Замовлень ще немає</div>':`
-      <table><tr><th>Маршрут</th><th>Пасажир</th><th>Телефон</th><th>Час</th><th>Статус</th><th>Водій</th><th></th></tr>
+      <table><tr><th>Маршрут</th><th>Пасажир</th><th>Телефон</th><th>Час подачі</th><th>Статус</th><th>Водій</th><th></th></tr>
       ${orders.map(o=>{
         const route = cfg.routes.find(r=>r.id===o.route_id)||{start_city:'?',end_city:'?'};
         const drv = state.drivers.find(d=>d.id===o.driver_id);
@@ -321,37 +302,16 @@ async function cancelOrder(orderId){
   state.orders = await api('/orders'); state.drivers = await api('/drivers'); render();
 }
 
-/* ===================== DRIVERS / ROUTES / REPORTS / DISPATCHERS ===================== */
-// (Функції для розділів Водії, Маршрути, Звіти, Диспетчери залишаються без змін...)
 function renderDrivers(main){
-  const cfg = state.config;
-  main.innerHTML = `
-    <h2 class="page-title">Водії</h2>
-    <div class="panel">
-      <table><tr><th>Ім'я</th><th>Телефон</th><th>Статус</th><th>Локація</th></tr>
-      ${state.drivers.map(d=>`<tr><td>${d.name}</td><td class="mono">${d.phone||'—'}</td>
-        <td><span class="status-dot ${d.status}"></span>${d.status==='online'?'Онлайн':'Офлайн'}</td>
-        <td>${d.current_city||'—'}</td></tr>`).join('')}</table>
-    </div>`;
+  main.innerHTML = `<h2 class="page-title">Водії</h2><div class="panel"><table><tr><th>Ім'я</th><th>Телефон</th><th>Статус</th><th>Локація</th></tr>${state.drivers.map(d=>`<tr><td>${d.name}</td><td class="mono">${d.phone||'—'}</td><td><span class="status-dot ${d.status}"></span>${d.status==='online'?'Онлайн':'Офлайн'}</td><td>${d.current_city||'—'}</td></tr>`).join('')}</table></div>`;
 }
-
-function renderRoutes(main){
-  const cfg = state.config;
-  main.innerHTML = `<h2 class="page-title">Маршрути</h2><div class="panel"><p>Керування маршрутами...</p></div>`;
-}
-
+function renderRoutes(main){ main.innerHTML = `<h2 class="page-title">Маршрути</h2><div class="panel"><p>Керування маршрутами...</p></div>`; }
 async function renderReports(main){
   const r = await api('/reports');
   main.innerHTML = `<h2 class="page-title">Звіт</h2><div class="panel"><p>Усього замовлень: ${r.totalOrders}</p></div>`;
 }
-
-async function renderDispatchers(main){
-  main.innerHTML = `<h2 class="page-title">Диспетчери</h2><div class="panel"><p>Управління акаунтами...</p></div>`;
-}
-
-function renderRegister(main){
-  main.innerHTML = `<h2 class="page-title">Реєстрація</h2><div class="panel"><p>Форма реєстрації...</p></div>`;
-}
+async function renderDispatchers(main){ main.innerHTML = `<h2 class="page-title">Диспетчери</h2><div class="panel"><p>Управління акаунтами...</p></div>`; }
+function renderRegister(main){ main.innerHTML = `<h2 class="page-title">Реєстрація</h2><div class="panel"><p>Форма реєстрації...</p></div>`; }
 
 render();
 </script>
