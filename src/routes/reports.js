@@ -1,41 +1,28 @@
 const express = require('express');
 const ExcelJS = require('exceljs');
 const { pool } = require('../db');
+const { routeChainText, STATUS_LABELS } = require('../orderLogic');
 const router = express.Router();
-
-const STATUS_LABELS = {
-  new: 'Нове', sent: 'Надіслано водію', confirmed: 'Підтверджено', in_progress: 'В дорозі',
-  completed: 'Завершено', cancelled: 'Скасовано',
-};
 
 async function buildReport() {
   const orders = (await pool.query('SELECT * FROM orders')).rows;
   const completed = orders.filter(o => o.status === 'completed');
-  const revenue = completed.reduce((s, o) => s + o.price, 0);
-  const commission = completed.reduce((s, o) => s + o.commission, 0);
+  const revenue = completed.reduce((s, o) => s + Number(o.price), 0);
+  const commission = completed.reduce((s, o) => s + Number(o.commission), 0);
 
   const drivers = (await pool.query('SELECT * FROM drivers')).rows;
-  const routes = (await pool.query('SELECT * FROM routes')).rows;
-  const carTypes = (await pool.query('SELECT * FROM car_types')).rows;
 
   const byDriver = {};
   completed.forEach(o => {
     if (!o.driver_id) return;
     byDriver[o.driver_id] = byDriver[o.driver_id] || { trips: 0, revenue: 0, commission: 0 };
     byDriver[o.driver_id].trips++;
-    byDriver[o.driver_id].revenue += o.price;
-    byDriver[o.driver_id].commission += o.commission;
-  });
-
-  const byRoute = {};
-  completed.forEach(o => {
-    byRoute[o.route_id] = byRoute[o.route_id] || { trips: 0, revenue: 0 };
-    byRoute[o.route_id].trips++;
-    byRoute[o.route_id].revenue += o.price;
+    byDriver[o.driver_id].revenue += Number(o.price);
+    byDriver[o.driver_id].commission += Number(o.commission);
   });
 
   return {
-    orders, drivers, routes, carTypes,
+    orders, drivers,
     totalOrders: orders.length,
     completedOrders: completed.length,
     revenue,
@@ -46,16 +33,12 @@ async function buildReport() {
       ...v,
       net: v.revenue - v.commission,
     })),
-    byRoute: Object.entries(byRoute).map(([routeId, v]) => {
-      const r = routes.find(x => x.id === Number(routeId));
-      return { routeId: Number(routeId), routeLabel: r ? `${r.start_city} → ${r.end_city}` : '—', ...v };
-    }),
   };
 }
 
 router.get('/', async (req, res) => {
   const r = await buildReport();
-  const { orders, drivers, routes, carTypes, ...summary } = r;
+  const { orders, drivers, ...summary } = r;
   res.json(summary);
 });
 
@@ -86,22 +69,13 @@ router.get('/export', async (req, res) => {
   s2.addRows(r.byDriver);
   s2.getRow(1).font = { bold: true };
 
-  const s3 = wb.addWorksheet('По маршрутах');
+  const s3 = wb.addWorksheet('Усі замовлення');
   s3.columns = [
-    { header: 'Маршрут', key: 'routeLabel', width: 28 },
-    { header: 'Поїздок', key: 'trips', width: 12 },
-    { header: 'Оборот, грн', key: 'revenue', width: 16 },
-  ];
-  s3.addRows(r.byRoute);
-  s3.getRow(1).font = { bold: true };
-
-  const s4 = wb.addWorksheet('Усі замовлення');
-  s4.columns = [
     { header: '№', key: 'id', width: 8 },
-    { header: 'Маршрут', key: 'route', width: 26 },
-    { header: 'Клас авто', key: 'car', width: 16 },
+    { header: 'Клієнт', key: 'client', width: 22 },
     { header: 'Пасажирів', key: 'passengers', width: 12 },
-    { header: 'Багаж', key: 'luggage', width: 10 },
+    { header: 'Подача', key: 'departure', width: 20 },
+    { header: 'Маршрут', key: 'route', width: 36 },
     { header: 'Ціна, грн', key: 'price', width: 12 },
     { header: 'Комісія, грн', key: 'commission', width: 14 },
     { header: 'Водій', key: 'driver', width: 20 },
@@ -109,15 +83,13 @@ router.get('/export', async (req, res) => {
     { header: 'Створено', key: 'created', width: 20 },
   ];
   r.orders.forEach(o => {
-    const route = r.routes.find(x => x.id === o.route_id);
-    const car = r.carTypes.find(x => x.id === o.car_type_id);
     const drv = r.drivers.find(x => x.id === o.driver_id);
-    s4.addRow({
+    s3.addRow({
       id: o.id,
-      route: route ? `${route.start_city} → ${route.end_city}` : '—',
-      car: car ? car.name : '—',
+      client: o.client,
       passengers: o.passengers,
-      luggage: o.luggage ? 'так' : 'ні',
+      departure: o.departure_time ? new Date(o.departure_time).toLocaleString('uk-UA') : '—',
+      route: routeChainText(o.stops),
       price: o.price,
       commission: o.commission,
       driver: drv ? drv.name : '—',
@@ -125,7 +97,7 @@ router.get('/export', async (req, res) => {
       created: new Date(o.created_at).toLocaleString('uk-UA'),
     });
   });
-  s4.getRow(1).font = { bold: true };
+  s3.getRow(1).font = { bold: true };
 
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', `attachment; filename="report_${Date.now()}.xlsx"`);

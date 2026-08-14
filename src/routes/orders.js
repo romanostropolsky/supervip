@@ -4,25 +4,24 @@ const { notifyDriverNewOrder } = require('../telegramBot');
 const router = express.Router();
 
 router.get('/', async (req, res) => {
-  try {
-    const { rows } = await pool.query('SELECT * FROM orders ORDER BY created_at DESC');
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  const { rows } = await pool.query('SELECT * FROM orders ORDER BY created_at DESC');
+  res.json(rows);
 });
 
 router.post('/', async (req, res) => {
-  console.log('DEBUG (POST): Отримано дані:', req.body);
-  const { routeId, carTypeId, passengers, luggage, driverId, passengerName, passengerPhone, pickupTime, arrivalTime } = req.body;
-  
-  if (!routeId || !carTypeId) return res.status(400).json({ error: 'Вкажіть маршрут і клас авто' });
+  const { client, passengers, departureTime, stops, price, commission, driverId } = req.body || {};
+  if (!client) return res.status(400).json({ error: "Вкажіть клієнта" });
+  if (!Array.isArray(stops) || stops.length < 2) {
+    return res.status(400).json({ error: 'Додайте мінімум 2 точки маршруту' });
+  }
 
-  const priceRow = (await pool.query(
-    'SELECT * FROM prices WHERE route_id=$1 AND car_type_id=$2', [routeId, carTypeId]
+  // Захист від задвоєння при швидкому повторному натисканні "Створити замовлення"
+  const recentDup = (await pool.query(
+    `SELECT * FROM orders WHERE client=$1 AND stops=$2::jsonb
+     AND created_at > now() - interval '5 seconds' AND status <> 'cancelled'`,
+    [client, JSON.stringify(stops)]
   )).rows[0];
-  const price = priceRow ? priceRow.price : 0;
-  const commission = priceRow ? priceRow.commission : 0;
+  if (recentDup) return res.json(recentDup);
 
   let status = 'new';
   let assignedDriverId = null;
@@ -36,11 +35,10 @@ router.post('/', async (req, res) => {
   }
 
   const { rows } = await pool.query(
-    `INSERT INTO orders (route_id, car_type_id, passengers, luggage, price, commission, status, driver_id, passenger_name, passenger_phone, pickup_time, arrival_time)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
-    [routeId, carTypeId, passengers || 1, !!luggage, price, commission, status, assignedDriverId, passengerName || null, passengerPhone || null, pickupTime || null, arrivalTime || null]
+    `INSERT INTO orders (client, passengers, departure_time, stops, price, commission, status, driver_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+    [client, passengers || 1, departureTime || null, JSON.stringify(stops), price || 0, commission || 0, status, assignedDriverId]
   );
-  
   const order = rows[0];
 
   if (assignedDriverId) {
@@ -49,49 +47,67 @@ router.post('/', async (req, res) => {
     if (!result.ok) {
       await pool.query("UPDATE orders SET status='new', driver_id=NULL WHERE id=$1", [order.id]);
       await pool.query('UPDATE drivers SET current_order_id=NULL WHERE id=$1', [assignedDriverId]);
-      return res.json({ ...order, status: 'new', driver_id: null, warning: 'Водій не отримав повідомлення' });
+      return res.json({ ...order, status: 'new', driver_id: null, warning: 'Водій ще не підключив Telegram-бота' });
     }
   }
 
   res.json(order);
 });
 
+// Редагувати можна лише замовлення в статусі "нове" (ще не надіслане водію)
 router.put('/:id', async (req, res) => {
-  console.log('DEBUG (PUT): Отримано дані:', req.body);
   const orderId = req.params.id;
-  const { routeId, carTypeId, passengers, luggage, passengerName, passengerPhone, pickupTime, arrivalTime } = req.body;
-  
+  const { client, passengers, departureTime, stops, price, commission } = req.body || {};
   const order = (await pool.query('SELECT * FROM orders WHERE id=$1', [orderId])).rows[0];
   if (!order) return res.status(404).json({ error: 'Замовлення не знайдено' });
-
+  if (order.status !== 'new') {
+    return res.status(400).json({ error: 'Редагувати можна лише нові, ще не призначені замовлення' });
+  }
   const { rows } = await pool.query(
-    `UPDATE orders SET 
-     route_id=COALESCE($1, route_id), car_type_id=COALESCE($2, car_type_id), 
-     passengers=COALESCE($3, passengers), luggage=COALESCE($4, luggage), 
-     passenger_name=COALESCE($5, passenger_name), passenger_phone=COALESCE($6, passenger_phone), 
-     pickup_time=COALESCE($7, pickup_time), arrival_time=COALESCE($8, arrival_time), 
-     updated_at=now() 
-     WHERE id=$9 RETURNING *`,
-    [routeId, carTypeId, passengers, luggage, passengerName, passengerPhone, pickupTime, arrivalTime, orderId]
+    `UPDATE orders SET client=$1, passengers=$2, departure_time=$3, stops=$4, price=$5, commission=$6, updated_at=now()
+     WHERE id=$7 RETURNING *`,
+    [
+      client || order.client,
+      passengers || order.passengers,
+      departureTime !== undefined ? (departureTime || null) : order.departure_time,
+      stops && stops.length >= 2 ? JSON.stringify(stops) : order.stops,
+      price !== undefined ? price : order.price,
+      commission !== undefined ? commission : order.commission,
+      orderId,
+    ]
   );
-  
   res.json(rows[0]);
 });
 
 router.post('/:id/assign', async (req, res) => {
-  const { driverId } = req.body;
+  const { driverId } = req.body || {};
   const orderId = req.params.id;
-  
-  await pool.query("UPDATE orders SET driver_id=$1, status='sent' WHERE id=$2", [driverId, orderId]);
+  const driver = (await pool.query('SELECT * FROM drivers WHERE id=$1', [driverId])).rows[0];
+  if (!driver) return res.status(404).json({ error: 'Водія не знайдено' });
+  if (driver.status !== 'online' || driver.current_order_id) {
+    return res.status(400).json({ error: 'Водій не онлайн або вже має активне замовлення' });
+  }
+
+  await pool.query("UPDATE orders SET driver_id=$1, status='sent', updated_at=now() WHERE id=$2", [driverId, orderId]);
   await pool.query('UPDATE drivers SET current_order_id=$1 WHERE id=$2', [orderId, driverId]);
-  
-  await notifyDriverNewOrder(driverId, orderId);
+
+  const result = await notifyDriverNewOrder(driverId, orderId);
+  if (!result.ok) {
+    await pool.query("UPDATE orders SET status='new', driver_id=NULL WHERE id=$1", [orderId]);
+    await pool.query('UPDATE drivers SET current_order_id=NULL WHERE id=$1', [driverId]);
+    return res.status(400).json({ error: 'Водій ще не підключив Telegram-бота' });
+  }
+
   res.json({ ok: true });
 });
 
 router.post('/:id/cancel', async (req, res) => {
   const orderId = req.params.id;
-  await pool.query("UPDATE orders SET status='cancelled' WHERE id=$1", [orderId]);
+  const order = (await pool.query('SELECT * FROM orders WHERE id=$1', [orderId])).rows[0];
+  if (order && order.driver_id) {
+    await pool.query('UPDATE drivers SET current_order_id=NULL WHERE id=$1 AND current_order_id=$2', [order.driver_id, orderId]);
+  }
+  await pool.query("UPDATE orders SET status='cancelled', updated_at=now() WHERE id=$1", [orderId]);
   res.json({ ok: true });
 });
 

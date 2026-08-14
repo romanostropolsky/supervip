@@ -1,62 +1,51 @@
+require('dotenv').config();
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
-require('dotenv').config();
+const { initSchema } = require('./db');
+const { requireAuth, requireAdmin } = require('./auth');
+const { bot, botEnabled } = require('./telegramBot');
+
+const authRoutes = require('./routes/auth');
+const driverRoutes = require('./routes/drivers');
+const orderRoutes = require('./routes/orders');
+const reportRoutes = require('./routes/reports');
+const dispatcherRoutes = require('./routes/dispatchers');
+const cityRoutes = require('./routes/cities');
 
 const app = express();
-
-// Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../public')));
 
-// ==========================================
-// МАРШРУТИ API (Усі ваші роути)
-// ==========================================
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/cities', require('./routes/cities'));
-app.use('/api/routes', require('./routes/cities')); // Для сумісності з фронтендом
-app.use('/api/config', require('./routes/config'));
-app.use('/api/dispatchers', require('./routes/dispatchers'));
-app.use('/api/drivers', require('./routes/drivers'));
-app.use('/api/orders', require('./routes/orders'));
-app.use('/api/reports', require('./routes/reports'));
+app.use('/api/auth', authRoutes);
+app.use('/api/drivers', requireAuth, driverRoutes);
+app.use('/api/orders', requireAuth, orderRoutes);
+app.use('/api/reports', requireAuth, reportRoutes);
+app.use('/api/dispatchers', requireAuth, requireAdmin, dispatcherRoutes);
+app.use('/api/cities', requireAuth, cityRoutes);
 
-// ==========================================
-// ЗАПУСК TELEGRAM БОТА (Обробка кнопок)
-// ==========================================
-try {
-  const { bot, botEnabled } = require('./telegramBot');
-
-  if (botEnabled && bot) {
-    bot.launch()
-      .then(() => console.log('🤖 Telegram бот успішно запущено! Обробка кнопок працює.'))
-      .catch((err) => console.error('❌ Помилка запуску Telegram бота:', err.message));
-  } else {
-    console.log('⚠️ TELEGRAM_BOT_TOKEN не вказано у Render Environment, бот вимкнений.');
-  }
-} catch (err) {
-  console.error('⚠️ Помилка ініціалізації telegramBot.js:', err.message);
-}
-
-// Головна сторінка (SPA fallback)
+app.use(express.static(path.join(__dirname, '..', 'public')));
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/index.html'));
+  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
 
-// ==========================================
-// БЛОК ЗАПУСКУ СЕРВЕРА
-// ==========================================
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
-  console.log(`✅ Сервер успішно запущено на порту ${PORT}`);
+async function main() {
+  await initSchema();
+  if (botEnabled) {
+    await bot.launch();
+    console.log('Telegram-бот запущено');
+  } else {
+    console.log('⚠ TELEGRAM_BOT_TOKEN не задано — сповіщення водіям вимкнені, панель диспетчера працює як звичайно.');
+  }
+  app.listen(PORT, () => console.log(`Сервер запущено на порті ${PORT}`));
+}
+
+main().catch((e) => {
+  console.error('Помилка запуску сервера:', e);
+  process.exit(1);
 });
 
-process.on('uncaughtException', (err) => {
-  console.error('❌ ПОМИЛКА (uncaughtException):', err);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ ПОМИЛКА (unhandledRejection):', reason);
-});
+process.once('SIGINT', () => { if (botEnabled) bot.stop('SIGINT'); });
+process.once('SIGTERM', () => { if (botEnabled) bot.stop('SIGTERM'); });
