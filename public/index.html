@@ -123,52 +123,50 @@
         el.innerHTML = `
           <h2 class="page-title">Нове замовлення</h2>
           <div class="panel">
-            <div id="orderForm">
-              <div class="row-flex">
-                <div class="form-group" style="flex:1;">
-                  <label>Звідки</label>
-                  <select id="fromCity">
-                    ${cityNames.map(c => `<option value="${c}">${c}</option>`).join('')}
-                  </select>
-                </div>
-                <div class="form-group" style="flex:1;">
-                  <label>Куди</label>
-                  <select id="toCity">
-                    ${cityNames.map(c => `<option value="${c}" ${c === 'Умань' ? 'selected' : ''}>${c}</option>`).join('')}
-                  </select>
-                </div>
-              </div>
-              <div class="form-group">
-                <label>Розрахована ціна (грн)</label>
-                <input type="text" id="routePrice" readonly style="font-weight:bold; color:var(--accent);">
-              </div>
-              <div class="form-group">
-                <label>Клас авто</label>
-                <select id="carTypeId">
-                  ${config && config.carTypes ? config.carTypes.map(c => `<option value="${c.id}">${c.name}</option>`).join('') : '<option value="1">Седан</option>'}
+            <div class="row-flex">
+              <div class="form-group" style="flex:1;">
+                <label>Звідки</label>
+                <select id="fromCity">
+                  ${cityNames.map(c => `<option value="${c}">${c}</option>`).join('')}
                 </select>
               </div>
-              <div class="form-group">
-                <label>Ім'я пасажира</label>
-                <input type="text" id="passengerName" placeholder="Введіть ім'я">
-              </div>
-              <div class="form-group">
-                <label>Телефон пасажира</label>
-                <input type="text" id="passengerPhone" placeholder="+380...">
-              </div>
-              <div class="form-group">
-                <label>Час подачі</label>
-                <input type="datetime-local" id="pickupTime">
-              </div>
-              <div class="form-group">
-                <label>Призначити водія (необов'язково)</label>
-                <select id="driverId">
-                  <option value="">-- Автоматично або без водія --</option>
-                  ${Array.isArray(drivers) ? drivers.filter(d => d.status === 'online').map(d => `<option value="${d.id}">${d.name}</option>`).join('') : ''}
+              <div class="form-group" style="flex:1;">
+                <label>Куди</label>
+                <select id="toCity">
+                  ${cityNames.map(c => `<option value="${c}" ${c === 'Умань' ? 'selected' : ''}>${c}</option>`).join('')}
                 </select>
               </div>
-              <button type="button" id="submitOrderBtn">Створити замовлення</button>
             </div>
+            <div class="form-group">
+              <label>Розрахована ціна (грн)</label>
+              <input type="text" id="routePrice" readonly style="font-weight:bold; color:var(--accent);">
+            </div>
+            <div class="form-group">
+              <label>Клас авто</label>
+              <select id="carTypeId">
+                ${config && config.carTypes ? config.carTypes.map(c => `<option value="${c.id}">${c.name}</option>`).join('') : '<option value="1">Седан</option>'}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Ім'я пасажира</label>
+              <input type="text" id="passengerName" placeholder="Введіть ім'я">
+            </div>
+            <div class="form-group">
+              <label>Телефон пасажира</label>
+              <input type="text" id="passengerPhone" placeholder="+380...">
+            </div>
+            <div class="form-group">
+              <label>Час подачі</label>
+              <input type="datetime-local" id="pickupTime">
+            </div>
+            <div class="form-group">
+              <label>Призначити водія (необов'язково)</label>
+              <select id="driverId">
+                <option value="">-- Автоматично або без водія --</option>
+                ${Array.isArray(drivers) ? drivers.filter(d => d.status === 'online').map(d => `<option value="${d.id}">${d.name}</option>`).join('') : ''}
+              </select>
+            </div>
+            <button type="button" id="submitOrderBtn">Створити замовлення</button>
           </div>`;
 
         const updatePrice = () => {
@@ -190,8 +188,8 @@
           const data = {
             routeId: found ? found.id : 1,
             carTypeId: document.getElementById('carTypeId').value,
-            passengerName: document.getElementById('passengerName').value,
-            passengerPhone: document.getElementById('passengerPhone').value,
+            passengerName: document.getElementById('passengerName').value || 'Клієнт',
+            passengerPhone: document.getElementById('passengerPhone').value || '—',
             pickupTime: document.getElementById('pickupTime').value || new Date().toISOString(),
             driverId: document.getElementById('driverId').value || null,
             routeDescription: `${from} → ${to}`
