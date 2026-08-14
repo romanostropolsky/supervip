@@ -1,523 +1,551 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Диспетчерська система</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    body { background-color: #0f172a; color: #f8fafc; min-height: 100vh; }
-    
-    .login-container { display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-    .login-card { background: #1e293b; border: 1px solid #334155; padding: 2.5rem; border-radius: 12px; width: 100%; max-width: 400px; }
-    .form-group { margin-bottom: 1.2rem; }
-    .form-group label { display: block; font-size: 0.85rem; margin-bottom: 0.4rem; color: #cbd5e1; }
-    .form-group input { width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; }
-    .btn-submit { width: 100%; padding: 0.8rem; background: #eab308; color: #0f172a; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; }
-
-    #adminPanel { display: none; }
-    header { background: #1e293b; padding: 1rem 2rem; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
-    .btn-logout { background: #ef4444; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; }
-    
-    .nav-tabs { display: flex; gap: 10px; background: #1e293b; padding: 0.5rem 2rem; border-bottom: 1px solid #334155; overflow-x: auto; }
-    .tab-btn { background: transparent; color: #94a3b8; border: none; padding: 0.75rem 1.2rem; cursor: pointer; font-weight: 600; border-radius: 6px; white-space: nowrap; }
-    .tab-btn.active { background: #334155; color: #f59e0b; }
-
-    .main-content { padding: 2rem; max-width: 1400px; margin: 0 auto; }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
-
-    .card { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem; }
-    .card h3 { margin-bottom: 1rem; color: #f59e0b; border-bottom: 1px solid #334155; padding-bottom: 0.5rem; }
-
-    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-    th, td { text-align: left; padding: 0.75rem; border-bottom: 1px solid #334155; font-size: 0.9rem; }
-    th { color: #94a3b8; }
-    tr:hover { background: #26334d; }
-
-    .order-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 15px; }
-    .order-form-grid input, .order-form-grid select { padding: 0.7rem; background: #0f172a; border: 1px solid #475569; border-radius: 6px; color: white; }
-    
-    .stops-builder { background: #0f172a; padding: 1rem; border-radius: 8px; border: 1px dashed #475569; margin-bottom: 15px; }
-    .stop-row { display: flex; gap: 10px; margin-bottom: 8px; align-items: center; }
-    .stop-row input { padding: 0.5rem; background: #1e293b; border: 1px solid #475569; border-radius: 4px; color: white; }
-    .stop-city-input { flex: 1; max-width: 250px; }
-    
-    .btn-add-stop { background: #3b82f6; color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 4px; cursor: pointer; margin-top: 5px; }
-    .btn-create { background: #22c55e; color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: bold; }
-    .btn-excel { background: #16a34a; color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 8px; }
-    .btn-danger { background: #ef4444; color: white; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; cursor: pointer; }
-    
-    .route-chain { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-    .stop-badge { background: #334155; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; border: 1px solid #475569; }
-    .stop-arrow { color: #f59e0b; font-weight: bold; }
-
-    /* Картки статистики для Звітів */
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px; }
-    .stat-card { background: #0f172a; padding: 1.2rem; border-radius: 8px; border: 1px solid #334155; text-align: center; }
-    .stat-card h4 { color: #94a3b8; font-size: 0.85rem; margin-bottom: 5px; }
-    .stat-card .val { font-size: 1.8rem; font-weight: bold; color: #f59e0b; }
-
-    .badge-class { padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; }
-    .class-standart { background: #475569; color: white; }
-    .class-comfort { background: #2563eb; color: white; }
-    .class-vip { background: #d97706; color: white; }
-    .class-bus { background: #16a34a; color: white; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Диспетчерська</title>
+<style>
+  :root{
+    --bg:#14171c; --panel:#1b1f27; --panel-2:#20252f; --border:#2a3140; --text:#e8ebf0; --muted:#8b93a3;
+    --accent:#f5a623; --accent-dim:#7a5719; --ok:#3ecf8e; --ok-dim:#173a2c; --bad:#ef5350; --bad-dim:#3a1c1c;
+    --info:#4f9df7; --info-dim:#17263a; --mono:"SF Mono","Consolas","Roboto Mono",monospace; --sans:-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);}
+  .top{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:var(--panel);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20;}
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);}
+  .brand h1{font-size:15px;letter-spacing:2px;text-transform:uppercase;font-weight:800;margin:0;}
+  .board{display:flex;gap:18px;font-family:var(--mono);font-size:13px;color:var(--accent);}
+  .board span{color:var(--muted);font-family:var(--sans);margin-right:6px;font-size:11px;text-transform:uppercase;}
+  .body-row{display:flex;min-height:calc(100vh - 57px);}
+  .sidebar{width:220px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);padding:16px 10px;}
+  .sidebar button{display:block;width:100%;text-align:left;background:transparent;border:none;color:var(--muted);padding:10px 12px;border-radius:8px;font-size:13.5px;font-weight:600;cursor:pointer;margin-bottom:2px;}
+  .sidebar button:hover{background:var(--panel-2);color:var(--text);}
+  .sidebar button.active{background:var(--accent-dim);color:var(--accent);}
+  .main{flex:1;padding:24px 28px;max-width:1200px;}
+  h2.page-title{font-size:20px;margin:0 0 4px 0;font-weight:800;}
+  p.page-sub{color:var(--muted);font-size:13px;margin:0 0 20px 0;}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:18px;}
+  .panel h3{margin:0 0 14px 0;font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);}
+  label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;margin-top:12px;font-weight:600;}
+  select,input[type=text],input[type=number],input[type=tel],input[type=password]{width:100%;background:var(--panel-2);border:1px solid var(--border);color:var(--text);padding:9px 10px;border-radius:7px;font-size:14px;font-family:var(--sans);}
+  .row{display:flex;gap:14px;flex-wrap:wrap;} .row>div{flex:1;min-width:160px;}
+  .checkbox-row{display:flex;align-items:center;gap:8px;margin-top:14px;} .checkbox-row input{width:auto;}
+  .btn{background:var(--accent);color:#1a1200;border:none;padding:10px 18px;border-radius:8px;font-weight:700;font-size:13.5px;cursor:pointer;margin-top:16px;}
+  .btn.secondary{background:var(--panel-2);color:var(--text);border:1px solid var(--border);}
+  .btn.danger{background:var(--bad-dim);color:#ff9d9a;border:1px solid var(--bad);}
+  .btn.small{padding:6px 12px;font-size:12px;margin-top:0;}
+  .price-preview{margin-top:16px;padding:14px;background:var(--panel-2);border-radius:8px;border:1px dashed var(--border);font-family:var(--mono);}
+  .price-preview .big{font-size:26px;color:var(--accent);font-weight:700;}
+  .price-preview .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;padding:8px 10px;border-bottom:1px solid var(--border);}
+  td{padding:10px 10px;border-bottom:1px solid var(--border);}
+  .mono{font-family:var(--mono);}
+  .chip{display:inline-flex;padding:4px 9px;border-radius:20px;font-size:11.5px;font-weight:700;text-transform:uppercase;}
+  .chip.new{background:#2a2f3a;color:var(--muted);} .chip.sent{background:var(--info-dim);color:var(--info);}
+  .chip.confirmed,.chip.in_progress{background:var(--accent-dim);color:var(--accent);}
+  .chip.completed{background:var(--ok-dim);color:var(--ok);} .chip.cancelled{background:var(--bad-dim);color:var(--bad);}
+  .status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;}
+  .status-dot.online{background:var(--ok);} .status-dot.offline{background:var(--muted);}
+  .empty{color:var(--muted);font-size:13px;padding:20px;text-align:center;}
+  .grid-price{width:100%;border-collapse:collapse;} .grid-price th,.grid-price td{border:1px solid var(--border);padding:6px;text-align:center;}
+  .grid-price input{width:64px;padding:5px;font-size:12px;text-align:center;} .grid-price .rowhead{text-align:left;font-weight:700;font-size:12.5px;}
+  .stat-strip{display:flex;gap:14px;margin-bottom:18px;flex-wrap:wrap;}
+  .stat-box{flex:1;min-width:140px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .stat-box .n{font-family:var(--mono);font-size:24px;color:var(--accent);font-weight:700;}
+  .stat-box .l{font-size:11px;color:var(--muted);text-transform:uppercase;}
+  .toast{position:fixed;bottom:20px;right:20px;background:var(--panel);border:1px solid var(--accent);padding:12px 18px;border-radius:8px;font-size:13px;z-index:100;max-width:340px;}
+  .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;}
+  .login-box{width:320px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:28px;}
+  .code-box{font-family:var(--mono);background:var(--panel-2);border:1px dashed var(--border);padding:10px;border-radius:6px;margin-top:8px;font-size:13px;}
+  @media (max-width:800px){.body-row{flex-direction:column;} .sidebar{width:100%;display:flex;flex-wrap:wrap;gap:4px;} .main{padding:16px;}}
+</style>
 </head>
 <body>
+<div id="root"></div>
+<script>
+const API = '/api';
+let token = localStorage.getItem('token') || null;
+let role = localStorage.getItem('role') || null;
+let state = { tab:'new_order', config:null, drivers:[], orders:[], dispatchers:[], toast:null, editingOrderId:null };
 
-  <datalist id="citiesDatalist"></datalist>
+function authHeaders(){ return token ? { 'Authorization': 'Bearer '+token } : {}; }
+async function api(path, opts={}){
+  const res = await fetch(API+path, {
+    ...opts,
+    headers: { 'Content-Type':'application/json', ...authHeaders(), ...(opts.headers||{}) },
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  if(res.status===401){ logout(); throw new Error('Сесія завершена, увійдіть знову'); }
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data.error || 'Помилка запиту');
+  return data;
+}
+function showToast(msg){ state.toast=msg; render(); setTimeout(()=>{state.toast=null; render();},3500); }
+function logout(){ token=null; role=null; localStorage.removeItem('token'); localStorage.removeItem('role'); render(); }
 
-  <div id="loginSection" class="login-container">
-    <div class="login-card">
-      <h2 style="margin-bottom: 1rem;">Вхід диспетчера</h2>
-      <form id="loginForm">
-        <div class="form-group"><label>Логін</label><input type="text" id="username" required></div>
-        <div class="form-group"><label>Пароль</label><input type="password" id="password" required></div>
-        <button type="submit" class="btn-submit">Увійти</button>
-      </form>
+const STATUS_LABELS = {new:'Нове',sent:'Надіслано водію',confirmed:'Підтверджено',in_progress:'В дорозі',completed:'Завершено',cancelled:'Скасовано'};
+function routeStages(r){ const s=['pickup']; if(r.stop1)s.push('stop1'); if(r.stop2)s.push('stop2'); s.push('end'); return s; }
+function stageLabel(r,stage){
+  if(stage==='pickup') return 'Забрав у '+r.start_city;
+  if(stage==='stop1') return 'Зупинка: '+r.stop1;
+  if(stage==='stop2') return 'Зупинка: '+r.stop2;
+  if(stage==='end') return 'Прибув до '+r.end_city;
+  return '—';
+}
+function priceOf(cfg, routeId, carTypeId){
+  const p = cfg.prices.find(p=>String(p.route_id)===String(routeId) && String(p.car_type_id)===String(carTypeId));
+  return p || {price:0, commission:0};
+}
+
+/* ===================== ROOT RENDER ===================== */
+async function render(){
+  const root = document.getElementById('root');
+  if(!token){ root.innerHTML = loginHtml(); bindLogin(); return; }
+
+  if(!state.config){
+    try{
+      state.config = await api('/config');
+      state.drivers = await api('/drivers');
+      state.orders = await api('/orders');
+    }catch(e){ showToast(e.message); }
+  }
+
+  root.innerHTML = `
+    <div class="top">
+      <div class="brand"><span class="dot"></span><h1>Диспетчерська</h1></div>
+      <div class="board">
+        <div><span>Водіїв онлайн</span>${state.drivers.filter(d=>d.status==='online').length}</div>
+        <div><span>Активних замовлень</span>${state.orders.filter(o=>['sent','confirmed','in_progress'].includes(o.status)).length}</div>
+      </div>
+      <button class="btn secondary small" onclick="logout()">Вийти</button>
     </div>
-  </div>
-
-  <div id="adminPanel">
-    <header>
-      <h2>🚕 Диспетчерська система</h2>
-      <div>
-        <span id="userInfo" style="margin-right: 15px; color: #94a3b8;"></span>
-        <button class="btn-logout" onclick="logout()">Вийти</button>
-      </div>
-    </header>
-
-    <div class="nav-tabs">
-      <button class="tab-btn active" onclick="switchTab('orders')">📋 Замовлення та Маршрути</button>
-      <button class="tab-btn" onclick="switchTab('reports')">📊 Звіти та Облік</button>
-      <button class="tab-btn" onclick="switchTab('drivers')">🚖 Водії та Автопарк</button>
-      <button class="tab-btn" onclick="switchTab('cities')">🏙 Міста</button>
+    <div class="body-row">
+      <div class="sidebar" id="sidebar"></div>
+      <div class="main" id="main"></div>
     </div>
+  `;
+  renderSidebar();
+  renderMain();
+  if(state.toast){
+    const d=document.createElement('div'); d.className='toast'; d.textContent=state.toast; document.body.appendChild(d);
+  }
+}
 
-    <div class="main-content">
-      
-      <!-- СТВОРЕННЯ ЗАМОВЛЕННЯ -->
-      <div id="tab-orders" class="tab-content active">
-        <div class="card">
-          <h3>➕ Створити нове замовлення</h3>
-          
-          <div class="order-form-grid">
-            <input type="text" id="ordClient" placeholder="Клієнт (ПІБ / Телефон)">
-            <input type="number" id="ordPassengers" placeholder="К-сть пасажирів" value="1" min="1">
-            <input type="datetime-local" id="ordTime" title="Дата та час виїзду">
-            <input type="number" id="ordPrice" placeholder="Ціна замовлення (грн)">
-            <select id="ordDriver"><option value="">-- Оберіть водія --</option></select>
-          </div>
-
-          <div class="stops-builder">
-            <h4 style="margin-bottom: 10px; color: #cbd5e1;">📍 Маршрут (почніть писати місто для підказки):</h4>
-            <div id="stopsContainer"></div>
-            <button class="btn-add-stop" onclick="addStopRow()">+ Додати зупинку</button>
-          </div>
-
-          <button class="btn-create" onclick="createOrder()">Зберегти замовлення</button>
-        </div>
-
-        <div class="card">
-          <h3>📋 Список активних рейсів</h3>
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Клієнт</th>
-                <th>Пасажирів</th>
-                <th>Дата/Час виїзду</th>
-                <th>Маршрут і зупинки</th>
-                <th>Ціна</th>
-                <th>Водій / Авто</th>
-                <th>Дія</th>
-              </tr>
-            </thead>
-            <tbody id="ordersTable"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- ЗВІТИ ТА ОБЛІК -->
-      <div id="tab-reports" class="tab-content">
-        <div class="stats-grid">
-          <div class="stat-card">
-            <h4>Всього замовлень</h4>
-            <div class="val" id="statTotalOrders">0</div>
-          </div>
-          <div class="stat-card">
-            <h4>Загальний касовий чек</h4>
-            <div class="val" id="statTotalPrice">0 грн</div>
-          </div>
-          <div class="stat-card">
-            <h4>Середня вартість рейсу</h4>
-            <div class="val" id="statAvgPrice">0 грн</div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px;">
-            <h3>📊 Повний фінансовий облік</h3>
-            <button class="btn-excel" onclick="exportToExcel()">📥 Завантажити в Excel (.CSV)</button>
-          </div>
-
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Дата Створення</th>
-                <th>Дата Виїзду</th>
-                <th>Клієнт</th>
-                <th>Пасажирів</th>
-                <th>Повний Маршрут</th>
-                <th>Водій</th>
-                <th>Сума (грн)</th>
-              </tr>
-            </thead>
-            <tbody id="reportsTable"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- ВОДІЇ ТА АВТОПАРК -->
-      <div id="tab-drivers" class="tab-content">
-        <div class="card">
-          <h3>➕ Додати нового водія та авто</h3>
-          <div class="order-form-grid">
-            <input type="text" id="drvName" placeholder="ПІБ Водія">
-            <input type="text" id="drvPhone" placeholder="+380...">
-            <input type="text" id="drvCar" placeholder="Авто (напр. Skoda Octavia)">
-            <select id="drvClass">
-              <option value="Стандарт">Класичне (Стандарт)</option>
-              <option value="Комфорт">Комфорт</option>
-              <option value="VIP">VIP / Бізнес</option>
-              <option value="Мікроавтобус">Мікроавтобус / Бус</option>
-            </select>
-            <input type="number" id="drvSeats" placeholder="Місць (напр. 4)" value="4" min="1">
-            <input type="number" id="drvTariff" placeholder="Тариф (грн/км або фікс)">
-          </div>
-          <button class="btn-create" onclick="addDriver()">Зберегти водія</button>
-        </div>
-
-        <div class="card">
-          <h3>🚖 Список водіїв та тарифів</h3>
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Водій</th>
-                <th>Телефон</th>
-                <th>Автомобіль</th>
-                <th>Клас</th>
-                <th>Місць</th>
-                <th>Тариф</th>
-                <th>Локація</th>
-                <th>Дія</th>
-              </tr>
-            </thead>
-            <tbody id="driversTable"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- МІСТА -->
-      <div id="tab-cities" class="tab-content">
-        <div class="card">
-          <h3>🏙 Додати нове місто</h3>
-          <div style="display:flex; gap:10px; max-width:400px; margin-bottom:15px;">
-            <input type="text" id="newCity" placeholder="Назва міста" style="padding:0.5rem; background:#0f172a; border:1px solid #475569; color:white; border-radius:4px; flex:1;">
-            <button onclick="addCity()" style="background:#22c55e; color:white; border:none; padding:0.5rem 1rem; border-radius:4px; cursor:pointer;">Додати</button>
-          </div>
-          <table>
-            <thead><tr><th>ID</th><th>Назва</th><th>Дія</th></tr></thead>
-            <tbody id="citiesTable"></tbody>
-          </table>
-        </div>
-      </div>
-
+function loginHtml(){
+  return `
+  <div class="login-wrap">
+    <div class="login-box">
+      <h2 class="page-title">Вхід диспетчера</h2>
+      <p class="page-sub">Диспетчерська система обліку замовлень</p>
+      <label>Логін</label><input type="text" id="lg_user">
+      <label>Пароль</label><input type="password" id="lg_pass">
+      <button class="btn" style="width:100%" onclick="doLogin()">Увійти</button>
+      <div id="loginErr" style="color:var(--bad);font-size:12px;margin-top:10px"></div>
     </div>
-  </div>
+  </div>`;
+}
+function bindLogin(){
+  document.getElementById('lg_pass').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+}
+async function doLogin(){
+  const username = document.getElementById('lg_user').value.trim();
+  const password = document.getElementById('lg_pass').value;
+  try{
+    const data = await api('/auth/login', {method:'POST', body:{username,password}});
+    token = data.token; role = data.role;
+    localStorage.setItem('token', token); localStorage.setItem('role', role);
+    state.config=null;
+    render();
+  }catch(e){ document.getElementById('loginErr').textContent = e.message; }
+}
 
-  <script>
-    let globalCities = [];
-    let globalDrivers = [];
-    let globalOrders = [];
+/* ===================== SIDEBAR / TABS ===================== */
+const BASE_TABS = [['new_order','Нове замовлення'],['orders','Замовлення'],['drivers','Водії'],['routes','Маршрути і тарифи'],['register','Реєстрація водія'],['reports','Звіт']];
+function currentTabs(){ return role==='admin' ? [...BASE_TABS, ['dispatchers','Диспетчери']] : BASE_TABS; }
+function renderSidebar(){
+  document.getElementById('sidebar').innerHTML = currentTabs().map(([k,l])=>`<button class="${state.tab===k?'active':''}" onclick="setTab('${k}')">${l}</button>`).join('');
+}
+function setTab(t){ state.tab=t; state.editingOrderId=null; render(); }
+function renderMain(){
+  const main = document.getElementById('main');
+  if(state.tab==='new_order') return renderNewOrder(main);
+  if(state.tab==='orders') return renderOrders(main);
+  if(state.tab==='drivers') return renderDrivers(main);
+  if(state.tab==='routes') return renderRoutes(main);
+  if(state.tab==='register') return renderRegister(main);
+  if(state.tab==='reports') return renderReports(main);
+  if(state.tab==='dispatchers') return renderDispatchers(main);
+}
 
-    window.onload = () => {
-      const user = localStorage.getItem('user');
-      if (user) showAdmin(JSON.parse(user));
-    };
+/* ===================== NEW ORDER ===================== */
+function renderNewOrder(main){
+  const cfg = state.config;
+  main.innerHTML = `
+    <h2 class="page-title">Нове замовлення</h2>
+    <p class="page-sub">Ціна й комісія розраховуються автоматично з тарифної сітки.</p>
+    <div class="panel">
+      <div class="row">
+        <div><label>Маршрут</label><select id="f_route">${cfg.routes.map(r=>`<option value="${r.id}">${r.start_city} → ${r.end_city}</option>`).join('')}</select></div>
+        <div><label>Клас авто</label><select id="f_car">${cfg.carTypes.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')}</select></div>
+      </div>
+      <div class="row">
+        <div><label>Кількість пасажирів</label><input type="number" id="f_pax" min="1" max="8" value="1"></div>
+        <div><label>Водій (онлайн, підключений до бота)</label><select id="f_driver"></select></div>
+      </div>
+      <div class="checkbox-row"><input type="checkbox" id="f_luggage"><label style="margin:0">Є багаж</label></div>
+      <div class="price-preview" id="pricePreview"></div>
+      <button class="btn" onclick="submitOrder()">Створити замовлення</button>
+    </div>`;
+  document.getElementById('f_route').onchange = updatePreview;
+  document.getElementById('f_car').onchange = updatePreview;
+  updatePreview();
+}
+function updatePreview(){
+  const cfg = state.config;
+  const routeId = document.getElementById('f_route').value;
+  const carId = document.getElementById('f_car').value;
+  const p = priceOf(cfg, routeId, carId);
+  document.getElementById('pricePreview').innerHTML = `<span class="lbl">До сплати клієнтом</span><br><span class="big">${p.price} грн</span> &nbsp; <span class="lbl">комісія: ${p.commission} грн</span>`;
+  const eligible = state.drivers.filter(d=>d.status==='online' && String(d.car_type_id)===String(carId) && !d.current_order_id && d.telegram_chat_id);
+  const sel = document.getElementById('f_driver');
+  sel.innerHTML = '<option value="">— призначити пізніше —</option>' + eligible.map(d=>{
+    const loc = d.current_city ? ` — 📍${d.current_city}` : (d.current_lat?' — 📡GPS':'');
+    return `<option value="${d.id}">${d.name}${loc}</option>`;
+  }).join('');
+}
+async function submitOrder(){
+  const routeId = document.getElementById('f_route').value;
+  const carTypeId = document.getElementById('f_car').value;
+  const passengers = parseInt(document.getElementById('f_pax').value)||1;
+  const luggage = document.getElementById('f_luggage').checked;
+  const driverId = document.getElementById('f_driver').value || null;
+  try{
+    const order = await api('/orders', {method:'POST', body:{routeId,carTypeId,passengers,luggage,driverId}});
+    showToast(order.warning || 'Замовлення створено' + (driverId && !order.warning ? ' і надіслано водію в Telegram' : ''));
+    state.orders = await api('/orders'); state.drivers = await api('/drivers');
+    state.tab='orders'; render();
+  }catch(e){ showToast(e.message); }
+}
 
-    document.getElementById('loginForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: document.getElementById('username').value,
-          password: document.getElementById('password').value
-        })
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        localStorage.setItem('user', JSON.stringify(data.user));
-        showAdmin(data.user);
-      } else {
-        alert(data.message || 'Помилка');
-      }
-    });
+/* ===================== ORDERS ===================== */
+function renderOrders(main){
+  const cfg = state.config;
+  const orders = [...state.orders].sort((a,b)=> new Date(b.created_at)-new Date(a.created_at));
+  main.innerHTML = `
+    <h2 class="page-title">Замовлення</h2>
+    <div id="editBox"></div>
+    <div class="panel">
+      ${orders.length===0?'<div class="empty">Замовлень ще немає</div>':`
+      <table><tr><th>Маршрут</th><th>Клас</th><th>Пас.</th><th>Багаж</th><th>Ціна</th><th>Комісія</th><th>Водій</th><th>Статус</th><th>Локація</th><th></th></tr>
+      ${orders.map(o=>{
+        const route = cfg.routes.find(r=>r.id===o.route_id)||{start_city:'?',end_city:'?'};
+        const car = cfg.carTypes.find(c=>c.id===o.car_type_id)||{name:'?'};
+        const drv = state.drivers.find(d=>d.id===o.driver_id);
+        return `<tr>
+          <td>${route.start_city} → ${route.end_city}</td><td>${car.name}</td><td>${o.passengers}</td><td>${o.luggage?'так':'ні'}</td>
+          <td class="mono">${o.price} грн</td><td class="mono">${o.commission} грн</td>
+          <td>${drv?drv.name:(o.status==='new'?assignSelect(o):'—')}</td>
+          <td><span class="chip ${o.status}">${STATUS_LABELS[o.status]}</span></td>
+          <td>${o.stage?stageLabel(route,o.stage):'—'}</td>
+          <td style="white-space:nowrap">
+            ${o.status==='new'?`<button class="btn secondary small" onclick="openEditOrder(${o.id})">Редагувати</button>`:''}
+            ${o.status!=='completed'&&o.status!=='cancelled'?`<button class="btn danger small" onclick="cancelOrder(${o.id})">Скасувати</button>`:''}
+          </td>
+        </tr>`;
+      }).join('')}</table>`}
+    </div>`;
+  if(state.editingOrderId) renderEditOrder();
+}
+function openEditOrder(id){ state.editingOrderId=id; renderEditOrder(); }
+function renderEditOrder(){
+  const cfg = state.config;
+  const o = state.orders.find(x=>x.id===state.editingOrderId);
+  const box = document.getElementById('editBox');
+  if(!o || !box) return;
+  box.innerHTML = `
+    <div class="panel">
+      <h3>Редагування замовлення №${o.id}</h3>
+      <div class="row">
+        <div><label>Маршрут</label><select id="e_route">${cfg.routes.map(r=>`<option value="${r.id}" ${r.id===o.route_id?'selected':''}>${r.start_city} → ${r.end_city}</option>`).join('')}</select></div>
+        <div><label>Клас авто</label><select id="e_car">${cfg.carTypes.map(c=>`<option value="${c.id}" ${c.id===o.car_type_id?'selected':''}>${c.name}</option>`).join('')}</select></div>
+      </div>
+      <div class="row">
+        <div><label>Кількість пасажирів</label><input type="number" id="e_pax" min="1" max="8" value="${o.passengers}"></div>
+      </div>
+      <div class="checkbox-row"><input type="checkbox" id="e_luggage" ${o.luggage?'checked':''}><label style="margin:0">Є багаж</label></div>
+      <div class="price-preview" id="editPricePreview"></div>
+      <button class="btn" onclick="saveEditOrder(${o.id})">Зберегти</button>
+      <button class="btn secondary" onclick="state.editingOrderId=null; render();">Скасувати</button>
+    </div>`;
+  const upd = ()=>{
+    const p = priceOf(cfg, document.getElementById('e_route').value, document.getElementById('e_car').value);
+    document.getElementById('editPricePreview').innerHTML = `<span class="lbl">Нова ціна</span><br><span class="big">${p.price} грн</span> &nbsp; <span class="lbl">комісія: ${p.commission} грн</span>`;
+  };
+  document.getElementById('e_route').onchange = upd;
+  document.getElementById('e_car').onchange = upd;
+  upd();
+}
+async function saveEditOrder(id){
+  const routeId = document.getElementById('e_route').value;
+  const carTypeId = document.getElementById('e_car').value;
+  const passengers = parseInt(document.getElementById('e_pax').value)||1;
+  const luggage = document.getElementById('e_luggage').checked;
+  try{
+    await api(`/orders/${id}`, {method:'PUT', body:{routeId,carTypeId,passengers,luggage}});
+    state.orders = await api('/orders');
+    state.editingOrderId=null;
+    showToast('Замовлення оновлено');
+    render();
+  }catch(e){ showToast(e.message); }
+}
+function assignSelect(order){
+  const eligible = state.drivers.filter(d=>d.status==='online' && d.car_type_id===order.car_type_id && !d.current_order_id && d.telegram_chat_id);
+  if(eligible.length===0) return '<span style="color:var(--muted);font-size:12px">немає вільних</span>';
+  return `<select onchange="assignDriver(${order.id}, this.value)" style="width:auto;min-width:140px;padding:5px;font-size:12px;"><option value="">— призначити —</option>${eligible.map(d=>`<option value="${d.id}">${d.name}</option>`).join('')}</select>`;
+}
+async function assignDriver(orderId, driverId){
+  if(!driverId) return;
+  try{
+    await api(`/orders/${orderId}/assign`, {method:'POST', body:{driverId}});
+    showToast('Замовлення надіслано водію в Telegram');
+    state.orders = await api('/orders'); state.drivers = await api('/drivers'); render();
+  }catch(e){ showToast(e.message); }
+}
+async function cancelOrder(orderId){
+  await api(`/orders/${orderId}/cancel`, {method:'POST'});
+  state.orders = await api('/orders'); state.drivers = await api('/drivers'); render();
+}
 
-    function showAdmin(user) {
-      document.getElementById('loginSection').style.display = 'none';
-      document.getElementById('adminPanel').style.display = 'block';
-      document.getElementById('userInfo').innerText = `Вітаю, ${user.username}`;
-      loadAllData();
-    }
+/* ===================== DRIVERS ===================== */
+function formatDriverLocation(d){
+  if(d.current_city) return `📍 ${d.current_city}`;
+  if(d.current_lat && d.current_lng){
+    const url = `https://maps.google.com/?q=${d.current_lat},${d.current_lng}`;
+    return `<a href="${url}" target="_blank" style="color:var(--info)">📡 GPS на карті</a>`;
+  }
+  return '—';
+}
+function renderDrivers(main){
+  const cfg = state.config;
+  main.innerHTML = `
+    <h2 class="page-title">Водії</h2>
+    <div class="panel">
+      ${state.drivers.length===0?'<div class="empty">Водіїв ще не зареєстровано</div>':`
+      <table><tr><th>Ім'я</th><th>Телефон</th><th>Клас</th><th>Telegram</th><th>Статус</th><th>Поточне замовлення</th><th>Локація</th></tr>
+      ${state.drivers.map(d=>{
+        const car = cfg.carTypes.find(c=>c.id===d.car_type_id)||{name:'?'};
+        const order = state.orders.find(o=>o.id===d.current_order_id);
+        return `<tr><td>${d.name}</td><td class="mono">${d.phone||'—'}</td><td>${car.name}</td>
+        <td>${d.telegram_chat_id?'✅ підключено':'⏳ очікує /start'}</td>
+        <td><span class="status-dot ${d.status}"></span>${d.status==='online'?'Онлайн':'Офлайн'}</td>
+        <td>${order?`<span class="chip ${order.status}">${STATUS_LABELS[order.status]}</span>`:'—'}</td>
+        <td>${formatDriverLocation(d)}</td></tr>`;
+      }).join('')}</table>`}
+    </div>`;
+}
 
-    function logout() { localStorage.removeItem('user'); location.reload(); }
+/* ===================== ROUTES & TARIFFS ===================== */
+function renderRoutes(main){
+  const cfg = state.config;
+  main.innerHTML = `
+    <h2 class="page-title">Маршрути і тарифи</h2>
+    <p class="page-sub">До 10 маршрутів і до 5 класів авто.</p>
+    <div class="panel"><h3>Маршрути (${cfg.routes.length}/10)</h3>
+      <table><tr><th>Звідки</th><th>Куди</th><th>Зупинка 1</th><th>Зупинка 2</th><th></th></tr>
+      ${cfg.routes.map(r=>`<tr><td>${r.start_city}</td><td>${r.end_city}</td><td>${r.stop1||'—'}</td><td>${r.stop2||'—'}</td><td><button class="btn danger small" onclick="deleteRoute(${r.id})">Видалити</button></td></tr>`).join('')}</table>
+      ${cfg.routes.length<10?`<div class="row" style="margin-top:14px">
+        <div><label>Звідки</label><input type="text" id="nr_start"></div>
+        <div><label>Куди</label><input type="text" id="nr_end"></div>
+        <div><label>Зупинка 1</label><input type="text" id="nr_s1"></div>
+        <div><label>Зупинка 2</label><input type="text" id="nr_s2"></div>
+      </div><button class="btn secondary" onclick="addRoute()">Додати маршрут</button>`:'<p class="page-sub">Ліміт досягнуто</p>'}
+    </div>
+    <div class="panel"><h3>Класи авто (${cfg.carTypes.length}/5)</h3>
+      <table><tr><th>Назва</th><th></th></tr>${cfg.carTypes.map(c=>`<tr><td>${c.name}</td><td><button class="btn danger small" onclick="deleteCarType(${c.id})">Видалити</button></td></tr>`).join('')}</table>
+      ${cfg.carTypes.length<5?`<div class="row" style="margin-top:14px"><div><label>Назва класу</label><input type="text" id="nc_name"></div></div><button class="btn secondary" onclick="addCarType()">Додати клас</button>`:'<p class="page-sub">Ліміт досягнуто</p>'}
+    </div>
+    <div class="panel"><h3>Тарифна сітка (ціна / комісія, грн)</h3>
+      ${cfg.routes.length===0||cfg.carTypes.length===0?'<div class="empty">Додайте маршрут і клас авто</div>':`
+      <div style="overflow-x:auto"><table class="grid-price"><tr><th></th>${cfg.carTypes.map(c=>`<th>${c.name}</th>`).join('')}</tr>
+      ${cfg.routes.map(r=>`<tr><td class="rowhead">${r.start_city} → ${r.end_city}</td>${cfg.carTypes.map(c=>{
+        const p = priceOf(cfg, r.id, c.id);
+        return `<td><input type="number" value="${p.price}" onchange="setPrice(${r.id},${c.id},'price',this.value)">
+        <br><input type="number" value="${p.commission}" onchange="setPrice(${r.id},${c.id},'commission',this.value)" style="margin-top:3px;color:var(--muted)"></td>`;
+      }).join('')}</tr>`).join('')}</table></div>
+      <p class="page-sub" style="margin-top:10px">Верхнє поле — ціна для клієнта, нижнє — комісія сервісу.</p>`}
+    </div>
+    <div class="panel" id="citiesPanel"><h3>Міста для локації водіїв</h3>
+      <p class="page-sub">Цей список бачать водії в Telegram-боті, коли натискають «📍 Оновити локацію».</p>
+      <div id="citiesList"><div class="empty">Завантаження...</div></div>
+      <div class="row" style="margin-top:14px"><div><label>Назва міста</label><input type="text" id="nct_name" placeholder="Умань"></div></div>
+      <button class="btn secondary" onclick="addCity()">Додати місто</button>
+    </div>`;
+  loadCities();
+}
+async function loadCities(){
+  try{
+    state.cities = await api('/cities');
+    const box = document.getElementById('citiesList');
+    if(!box) return;
+    box.innerHTML = state.cities.length===0 ? '<div class="empty">Список порожній</div>' :
+      `<table><tr><th>Місто</th><th></th></tr>${state.cities.map(c=>`<tr><td>${c.name}</td><td><button class="btn danger small" onclick="deleteCity(${c.id})">Видалити</button></td></tr>`).join('')}</table>`;
+  }catch(e){ showToast(e.message); }
+}
+async function addCity(){
+  const name = document.getElementById('nct_name').value.trim();
+  if(!name){ showToast('Вкажіть назву міста'); return; }
+  try{ await api('/cities',{method:'POST', body:{name}}); document.getElementById('nct_name').value=''; loadCities(); }
+  catch(e){ showToast(e.message); }
+}
+async function deleteCity(id){ await api('/cities/'+id,{method:'DELETE'}); loadCities(); }
+async function addRoute(){
+  const startCity=document.getElementById('nr_start').value.trim();
+  const endCity=document.getElementById('nr_end').value.trim();
+  const stop1=document.getElementById('nr_s1').value.trim();
+  const stop2=document.getElementById('nr_s2').value.trim();
+  if(!startCity||!endCity){ showToast('Вкажіть початок і кінець маршруту'); return; }
+  try{ await api('/config/routes',{method:'POST', body:{startCity,endCity,stop1,stop2}}); state.config=await api('/config'); render(); }
+  catch(e){ showToast(e.message); }
+}
+async function deleteRoute(id){ await api('/config/routes/'+id,{method:'DELETE'}); state.config=await api('/config'); render(); }
+async function addCarType(){
+  const name=document.getElementById('nc_name').value.trim();
+  if(!name){ showToast('Вкажіть назву класу'); return; }
+  try{ await api('/config/car-types',{method:'POST', body:{name}}); state.config=await api('/config'); render(); }
+  catch(e){ showToast(e.message); }
+}
+async function deleteCarType(id){ await api('/config/car-types/'+id,{method:'DELETE'}); state.config=await api('/config'); render(); }
+async function setPrice(routeId,carTypeId,field,value){
+  const cfg = state.config;
+  const p = priceOf(cfg, routeId, carTypeId);
+  const price = field==='price'?parseInt(value)||0:p.price;
+  const commission = field==='commission'?parseInt(value)||0:p.commission;
+  await api('/config/prices',{method:'PUT', body:{routeId,carTypeId,price,commission}});
+  state.config = await api('/config');
+}
 
-    function switchTab(tab) {
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      event.target.classList.add('active');
-      document.getElementById(`tab-${tab}`).classList.add('active');
-    }
+/* ===================== REGISTER DRIVER ===================== */
+function renderRegister(main){
+  const cfg = state.config;
+  main.innerHTML = `
+    <h2 class="page-title">Реєстрація водія</h2>
+    <p class="page-sub">Після реєстрації водій має надіслати боту команду /start з кодом прив'язки.</p>
+    <div class="panel">
+      <div class="row">
+        <div><label>Ім'я</label><input type="text" id="rd_name"></div>
+        <div><label>Телефон</label><input type="tel" id="rd_phone"></div>
+      </div>
+      <div class="row"><div><label>Клас авто</label><select id="rd_car">${cfg.carTypes.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')}</select></div></div>
+      <button class="btn" onclick="registerDriver()">Зареєструвати водія</button>
+    </div>
+    <div class="panel"><h3>Зареєстровані водії (${state.drivers.length})</h3>
+      ${state.drivers.length===0?'<div class="empty">Поки немає водіїв</div>':`
+      <table><tr><th>Ім'я</th><th>Телефон</th><th>Клас</th><th>Код / Telegram</th><th></th></tr>
+      ${state.drivers.map(d=>{
+        const car = cfg.carTypes.find(c=>c.id===d.car_type_id)||{name:'?'};
+        return `<tr><td>${d.name}</td><td class="mono">${d.phone||'—'}</td><td>${car.name}</td>
+        <td>${d.telegram_chat_id?'✅ підключено':`<div class="code-box">/start ${d.link_code}</div>`}</td>
+        <td><button class="btn danger small" onclick="removeDriver(${d.id})">Видалити</button></td></tr>`;
+      }).join('')}</table>`}
+    </div>`;
+}
+async function registerDriver(){
+  const name=document.getElementById('rd_name').value.trim();
+  const phone=document.getElementById('rd_phone').value.trim();
+  const carTypeId=document.getElementById('rd_car').value;
+  if(!name){ showToast("Вкажіть ім'я водія"); return; }
+  try{
+    await api('/drivers',{method:'POST', body:{name,phone,carTypeId}});
+    state.drivers = await api('/drivers');
+    showToast("Водія зареєстровано. Передайте йому код прив'язки.");
+    render();
+  }catch(e){ showToast(e.message); }
+}
+async function removeDriver(id){ await api('/drivers/'+id,{method:'DELETE'}); state.drivers=await api('/drivers'); render(); }
 
-    function addStopRow(cityName = '', timeVal = '') {
-      const container = document.getElementById('stopsContainer');
-      const count = container.children.length;
-      if (count >= 6) return alert('Максимум 6 зупинок в одному маршруті');
+/* ===================== REPORTS ===================== */
+async function exportReport(){
+  try{
+    const res = await fetch(API+'/reports/export', { headers: authHeaders() });
+    if(!res.ok) throw new Error('Не вдалося сформувати файл');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'звіт.xlsx';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  }catch(e){ showToast(e.message); }
+}
+async function renderReports(main){
+  main.innerHTML = '<div class="empty">Завантаження...</div>';
+  const r = await api('/reports');
+  main.innerHTML = `
+    <h2 class="page-title">Звіт</h2>
+    <button class="btn secondary" style="margin-bottom:16px" onclick="exportReport()">⬇ Завантажити Excel</button>
+    <div class="stat-strip">
+      <div class="stat-box"><div class="n">${r.totalOrders}</div><div class="l">Усього замовлень</div></div>
+      <div class="stat-box"><div class="n">${r.completedOrders}</div><div class="l">Завершено</div></div>
+      <div class="stat-box"><div class="n">${r.revenue}</div><div class="l">Оборот, грн</div></div>
+      <div class="stat-box"><div class="n">${r.commission}</div><div class="l">Комісія сервісу, грн</div></div>
+    </div>
+    <div class="panel"><h3>По водіях</h3>
+      ${r.byDriver.length===0?'<div class="empty">Немає завершених поїздок</div>':`
+      <table><tr><th>Водій</th><th>Поїздок</th><th>Зібрано</th><th>Комісія</th><th>Чистими водію</th></tr>
+      ${r.byDriver.map(v=>`<tr><td>${v.driverName}</td><td>${v.trips}</td><td class="mono">${v.revenue} грн</td><td class="mono">${v.commission} грн</td><td class="mono">${v.net} грн</td></tr>`).join('')}</table>`}
+    </div>
+    <div class="panel"><h3>По маршрутах</h3>
+      ${r.byRoute.length===0?'<div class="empty">Немає завершених поїздок</div>':`
+      <table><tr><th>Маршрут</th><th>Поїздок</th><th>Оборот</th></tr>
+      ${r.byRoute.map(v=>`<tr><td>${v.routeLabel}</td><td>${v.trips}</td><td class="mono">${v.revenue} грн</td></tr>`).join('')}</table>`}
+    </div>`;
+}
 
-      const div = document.createElement('div');
-      div.className = 'stop-row';
-      
-      div.innerHTML = `
-        <span style="color:#94a3b8; font-weight:bold; min-width:60px;">Точка ${count + 1}:</span>
-        <input type="text" list="citiesDatalist" class="stop-city-input" placeholder="Введіть місто..." value="${cityName}">
-        <input type="time" class="stop-time" value="${timeVal}">
-        ${count >= 2 ? '<button class="btn-danger" onclick="this.parentElement.remove()">✕</button>' : ''}
-      `;
-      container.appendChild(div);
-    }
+/* ===================== DISPATCHERS (admin only) ===================== */
+async function renderDispatchers(main){
+  main.innerHTML = '<div class="empty">Завантаження...</div>';
+  let list;
+  try{ list = await api('/dispatchers'); }catch(e){ main.innerHTML = `<div class="empty">${e.message}</div>`; return; }
+  state.dispatchers = list;
+  main.innerHTML = `
+    <h2 class="page-title">Диспетчери</h2>
+    <p class="page-sub">Керування акаунтами, що мають доступ до цієї панелі.</p>
+    <div class="panel">
+      <div class="row">
+        <div><label>Логін</label><input type="text" id="nd_user"></div>
+        <div><label>Пароль</label><input type="password" id="nd_pass"></div>
+        <div><label>Роль</label><select id="nd_role"><option value="dispatcher">Диспетчер</option><option value="admin">Адміністратор</option></select></div>
+      </div>
+      <button class="btn" onclick="addDispatcher()">Додати акаунт</button>
+    </div>
+    <div class="panel">
+      <table><tr><th>Логін</th><th>Роль</th><th></th></tr>
+      ${state.dispatchers.map(d=>`<tr><td>${d.username}</td><td>${d.role==='admin'?'Адміністратор':'Диспетчер'}</td>
+        <td><button class="btn danger small" onclick="deleteDispatcher(${d.id})">Видалити</button></td></tr>`).join('')}
+      </table>
+    </div>`;
+}
+async function addDispatcher(){
+  const username = document.getElementById('nd_user').value.trim();
+  const password = document.getElementById('nd_pass').value;
+  const role = document.getElementById('nd_role').value;
+  if(!username||!password){ showToast('Вкажіть логін і пароль'); return; }
+  try{
+    await api('/dispatchers', {method:'POST', body:{username,password,role}});
+    showToast('Акаунт створено');
+    renderDispatchers(document.getElementById('main'));
+  }catch(e){ showToast(e.message); }
+}
+async function deleteDispatcher(id){
+  try{
+    await api('/dispatchers/'+id, {method:'DELETE'});
+    renderDispatchers(document.getElementById('main'));
+  }catch(e){ showToast(e.message); }
+}
 
-    async function loadAllData() {
-      globalCities = await (await fetch('/api/cities')).json();
-      document.getElementById('citiesDatalist').innerHTML = globalCities.map(c => `<option value="${c.name}">`).join('');
-      document.querySelector('#citiesTable').innerHTML = globalCities.map(c => 
-        `<tr><td>${c.id}</td><td>${c.name}</td><td><button class="btn-danger" onclick="deleteCity(${c.id})">Видалити</button></td></tr>`
-      ).join('');
-
-      globalDrivers = await (await fetch('/api/drivers')).json();
-      document.querySelector('#driversTable').innerHTML = globalDrivers.map(d => {
-        let badgeClass = 'class-standart';
-        if (d.car_class === 'Комфорт') badgeClass = 'class-comfort';
-        if (d.car_class === 'VIP') badgeClass = 'class-vip';
-        if (d.car_class === 'Мікроавтобус') badgeClass = 'class-bus';
-
-        return `
-          <tr>
-            <td>${d.id}</td>
-            <td><b>${d.name}</b></td>
-            <td>${d.phone || '-'}</td>
-            <td>${d.car_model || '-'}</td>
-            <td><span class="badge-class ${badgeClass}">${d.car_class || 'Стандарт'}</span></td>
-            <td><b>${d.seats || 4} місць</b></td>
-            <td>${d.tariff_rate ? d.tariff_rate + ' грн' : 'Не вказано'}</td>
-            <td>${d.current_location || 'Не вказано'}</td>
-            <td><button class="btn-danger" onclick="deleteDriver(${d.id})">Видалити</button></td>
-          </tr>
-        `;
-      }).join('');
-
-      document.getElementById('ordDriver').innerHTML = '<option value="">-- Оберіть водія --</option>' + 
-        globalDrivers.map(d => `<option value="${d.id}">${d.name} (${d.car_class}, ${d.seats} місць) - ${d.car_model || ''}</option>`).join('');
-
-      const container = document.getElementById('stopsContainer');
-      if (container.children.length === 0) {
-        addStopRow('Київ', '08:00');
-        addStopRow('Львів', '14:00');
-      }
-
-      loadOrders();
-    }
-
-    async function loadOrders() {
-      globalOrders = await (await fetch('/api/orders')).json();
-      
-      // Рендеринг у таб замовлень
-      document.querySelector('#ordersTable').innerHTML = globalOrders.map(o => {
-        let stopsHtml = '';
-        if (o.stops && Array.isArray(o.stops)) {
-          stopsHtml = o.stops.map(s => 
-            `<span class="stop-badge"><b>${s.city}</b> ${s.time ? '('+s.time+')' : ''}</span>`
-          ).join(' <span class="stop-arrow">➔</span> ');
-        }
-        const depTime = o.departure_time ? new Date(o.departure_time).toLocaleString('uk-UA') : '-';
-        const driverInfo = o.driver_name ? `${o.driver_name} (${o.car_class || ''})` : 'Не призначено';
-
-        return `
-          <tr>
-            <td>${o.id}</td>
-            <td><b>${o.client || '-'}</b></td>
-            <td><b style="color:#f59e0b">👤 ${o.passengers || 1}</b></td>
-            <td>${depTime}</td>
-            <td><div class="route-chain">${stopsHtml}</div></td>
-            <td><b style="color:#22c55e">${o.price || 0} грн</b></td>
-            <td>${driverInfo}</td>
-            <td><button class="btn-danger" onclick="deleteOrder(${o.id})">Видалити</button></td>
-          </tr>
-        `;
-      }).join('');
-
-      // Рендеринг у Звіти
-      let totalSum = 0;
-      document.querySelector('#reportsTable').innerHTML = globalOrders.map(o => {
-        let routeStr = '';
-        if (o.stops && Array.isArray(o.stops)) {
-          routeStr = o.stops.map(s => `${s.city} ${s.time ? '('+s.time+')' : ''}`).join(' -> ');
-        }
-        const priceNum = parseFloat(o.price) || 0;
-        totalSum += priceNum;
-
-        const createDate = o.created_at ? new Date(o.created_at).toLocaleDateString('uk-UA') : '-';
-        const depTime = o.departure_time ? new Date(o.departure_time).toLocaleString('uk-UA') : '-';
-
-        return `
-          <tr>
-            <td>${o.id}</td>
-            <td>${createDate}</td>
-            <td>${depTime}</td>
-            <td><b>${o.client || '-'}</b></td>
-            <td>${o.passengers || 1}</td>
-            <td>${routeStr}</td>
-            <td>${o.driver_name || 'Не вказано'}</td>
-            <td><b style="color:#22c55e">${priceNum} грн</b></td>
-          </tr>
-        `;
-      }).join('');
-
-      // Статистичні підсумки
-      const count = globalOrders.length;
-      document.getElementById('statTotalOrders').innerText = count;
-      document.getElementById('statTotalPrice').innerText = `${totalSum.toLocaleString()} грн`;
-      document.getElementById('statAvgPrice').innerText = count > 0 ? `${Math.round(totalSum / count).toLocaleString()} грн` : '0 грн';
-    }
-
-    // --- ЕКСПОРТ В EXCEL / CSV ---
-    function exportToExcel() {
-      if (!globalOrders.length) return alert('Немає замовлень для завантаження!');
-
-      let csvContent = "\uFEFF"; // UTF-8 BOM для правильного відображення кирилиці в Excel
-      csvContent += "ID;Дата Створення;Дата Виїзду;Клієнт;Пасажирів;Маршрут;Водій;Ціна (грн)\n";
-
-      globalOrders.forEach(o => {
-        let routeStr = '';
-        if (o.stops && Array.isArray(o.stops)) {
-          routeStr = o.stops.map(s => `${s.city} ${s.time ? '('+s.time+')' : ''}`).join(' -> ');
-        }
-        const createDate = o.created_at ? new Date(o.created_at).toLocaleDateString('uk-UA') : '';
-        const depTime = o.departure_time ? new Date(o.departure_time).toLocaleString('uk-UA') : '';
-        
-        const row = [
-          o.id,
-          `"${createDate}"`,
-          `"${depTime}"`,
-          `"${o.client || ''}"`,
-          o.passengers || 1,
-          `"${routeStr}"`,
-          `"${o.driver_name || ''}"`,
-          o.price || 0
-        ];
-        csvContent += row.join(";") + "\n";
-      });
-
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.setAttribute("href", url);
-      link.setAttribute("download", `report_orders_${new Date().toISOString().slice(0,10)}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-
-    async function createOrder() {
-      const client = document.getElementById('ordClient').value.trim();
-      const passengers = document.getElementById('ordPassengers').value;
-      const departure_time = document.getElementById('ordTime').value;
-      const price = document.getElementById('ordPrice').value;
-      const driver_id = document.getElementById('ordDriver').value;
-
-      const stopRows = document.querySelectorAll('.stop-row');
-      const stops = [];
-      stopRows.forEach(row => {
-        const city = row.querySelector('.stop-city-input').value.trim();
-        const time = row.querySelector('.stop-time').value;
-        if (city) stops.push({ city, time });
-      });
-
-      if (!client || !departure_time || stops.length < 2) {
-        return alert('Заповніть клієнта, дату/час виїзду та мінімум 2 зупинки!');
-      }
-
-      await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ client, passengers, departure_time, stops, price, driver_id })
-      });
-
-      alert('Замовлення успішно створено!');
-      loadOrders();
-    }
-
-    async function deleteOrder(id) {
-      if (!confirm('Видалити замовлення?')) return;
-      await fetch(`/api/orders/${id}`, { method: 'DELETE' });
-      loadOrders();
-    }
-
-    async function addDriver() {
-      const name = document.getElementById('drvName').value.trim();
-      const phone = document.getElementById('drvPhone').value.trim();
-      const car_model = document.getElementById('drvCar').value.trim();
-      const car_class = document.getElementById('drvClass').value;
-      const seats = document.getElementById('drvSeats').value;
-      const tariff_rate = document.getElementById('drvTariff').value;
-
-      if (!name) return alert('Вкажіть ПІБ водія!');
-
-      await fetch('/api/drivers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phone, car_model, car_class, seats, tariff_rate })
-      });
-
-      document.getElementById('drvName').value = '';
-      document.getElementById('drvPhone').value = '';
-      document.getElementById('drvCar').value = '';
-      loadAllData();
-    }
-
-    async function deleteDriver(id) {
-      if (!confirm('Видалити водія?')) return;
-      await fetch(`/api/drivers/${id}`, { method: 'DELETE' });
-      loadAllData();
-    }
-
-    async function addCity() {
-      const name = document.getElementById('newCity').value.trim();
-      if (!name) return;
-      await fetch('/api/cities', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ name }) });
-      document.getElementById('newCity').value = '';
-      loadAllData();
-    }
-
-    async function deleteCity(id) {
-      await fetch(`/api/cities/${id}`, { method: 'DELETE' });
-      loadAllData();
-    }
-  </script>
+render();
+</script>
 </body>
 </html>

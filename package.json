@@ -5,8 +5,9 @@
   "main": "src/server.js",
   "type": "commonjs",
   "scripts": {
-  "start": "node src/server.js"
-},
+    "start": "node src/server.js",
+    "create-dispatcher": "node src/createDispatcher.js"
+  },
   "dependencies": {
     "express": "^4.19.2",
     "pg": "^8.12.0",

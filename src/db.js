@@ -1,10 +1,11 @@
 const { Pool } = require('pg');
 
+const isLocal = process.env.DATABASE_URL && (
+  process.env.DATABASE_URL.includes('localhost') || process.env.DATABASE_URL.includes('127.0.0.1')
+);
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL && process.env.DATABASE_URL.includes('localhost')
-    ? false
-    : { rejectUnauthorized: false },
+  ssl: isLocal ? false : { rejectUnauthorized: false },
 });
 
 const SCHEMA = `
@@ -37,6 +38,11 @@ CREATE TABLE IF NOT EXISTS prices (
   PRIMARY KEY (route_id, car_type_id)
 );
 
+CREATE TABLE IF NOT EXISTS cities (
+  id SERIAL PRIMARY KEY,
+  name TEXT UNIQUE NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS drivers (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
@@ -46,8 +52,16 @@ CREATE TABLE IF NOT EXISTS drivers (
   telegram_chat_id TEXT UNIQUE,
   link_code TEXT UNIQUE,
   current_order_id INTEGER,
+  current_city TEXT,
+  current_lat DOUBLE PRECISION,
+  current_lng DOUBLE PRECISION,
+  location_updated_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT now()
 );
+ALTER TABLE drivers ADD COLUMN IF NOT EXISTS current_city TEXT;
+ALTER TABLE drivers ADD COLUMN IF NOT EXISTS current_lat DOUBLE PRECISION;
+ALTER TABLE drivers ADD COLUMN IF NOT EXISTS current_lng DOUBLE PRECISION;
+ALTER TABLE drivers ADD COLUMN IF NOT EXISTS location_updated_at TIMESTAMP;
 
 CREATE TABLE IF NOT EXISTS orders (
   id SERIAL PRIMARY KEY,
