@@ -28,8 +28,8 @@
     header { height: 60px; min-height: 60px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: flex-end; padding: 0 20px; gap: 20px; background: var(--panel); }
     .top-stat { font-size: 13px; color: var(--muted); }
     .top-stat span { color: var(--accent); font-weight: bold; }
-    .content { padding: 20px; flex: 1; }
-    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px; max-width: 900px; margin-bottom: 40px; }
+    .content { padding: 20px; flex: 1; padding-bottom: 50px; }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px; max-width: 900px; margin-bottom: 20px; }
     .page-title { font-size: 20px; margin-bottom: 20px; font-weight: 600; }
     .form-group { margin-bottom: 15px; }
     label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; }
@@ -85,6 +85,16 @@
       } catch(e) {}
     }
 
+    function getCities() {
+      const saved = localStorage.getItem('custom_cities');
+      if (saved) return JSON.parse(saved);
+      return ['Київ', 'Умань', 'Одеса', 'Львів', 'Кишинів'];
+    }
+
+    function saveCities(cities) {
+      localStorage.setItem('custom_cities', JSON.stringify(cities));
+    }
+
     function getTariffs() {
       const saved = localStorage.getItem('custom_tariffs');
       if (saved) return JSON.parse(saved);
@@ -101,12 +111,8 @@
 
     const pages = {
       'new-order': async (el) => {
-        let cities = [];
-        try { cities = await api('/cities'); } catch(e) {}
-        const cityList = Array.isArray(cities) ? cities : (cities.cities || cities.data || []);
-        const cityNames = cityList.map(c => c.name);
+        const cityNames = getCities();
         const tariffs = getTariffs();
-
         const [config, drivers] = await Promise.all([api('/config'), api('/drivers')]);
         
         el.innerHTML = `
@@ -139,15 +145,15 @@
               </div>
               <div class="form-group">
                 <label>Ім'я пасажира</label>
-                <input type="text" id="passengerName" placeholder="Введіть ім'я">
+                <input type="text" id="passengerName" placeholder="Введіть ім'я" required>
               </div>
               <div class="form-group">
                 <label>Телефон пасажира</label>
-                <input type="text" id="passengerPhone" placeholder="+380...">
+                <input type="text" id="passengerPhone" placeholder="+380..." required>
               </div>
               <div class="form-group">
                 <label>Час подачі</label>
-                <input type="datetime-local" id="pickupTime">
+                <input type="datetime-local" id="pickupTime" required>
               </div>
               <div class="form-group">
                 <label>Призначити водія (необов'язково)</label>
@@ -231,24 +237,36 @@
           </div>`;
       },
       'routes-tariffs': async (el) => {
-        let cities = [];
-        try { cities = await api('/cities'); } catch(e) {}
-        const cityList = Array.isArray(cities) ? cities : (cities.cities || cities.data || []);
-        const cityNames = cityList.map(c => c.name);
+        const cityNames = getCities();
         const tariffs = getTariffs();
 
         el.innerHTML = `
           <h2 class="page-title">Маршрути і тарифи</h2>
-          <div class="panel" style="max-width: 100%;">
-            <div style="margin-bottom: 20px; background: var(--panel-2); padding: 15px; border-radius: 6px;">
-              <h3 style="font-size: 14px; margin-bottom: 10px; color: var(--accent);">Додати новий маршрут / тариф</h3>
-              <form id="addTariffForm" style="display: flex; gap: 10px;">
+          
+          <div class="panel">
+            <h3 style="font-size: 14px; margin-bottom: 10px; color: var(--accent);">Додати нове місто</h3>
+            <form id="addCityForm" style="display: flex; gap: 10px;">
+              <input type="text" id="newCityName" placeholder="Назва міста" style="flex:1;" required>
+              <button type="submit" style="width: auto; margin-top: 0;">Додати місто</button>
+            </form>
+          </div>
+
+          <div class="panel">
+            <h3 style="font-size: 14px; margin-bottom: 10px; color: var(--accent);">Додати новий маршрут / тариф</h3>
+            <form id="addTariffForm">
+              <div class="row-flex" style="margin-bottom: 10px;">
                 <select id="newFrom" style="flex:1;">${cityNames.map(c => `<option value="${c}">${c}</option>`).join('')}</select>
                 <select id="newTo" style="flex:1;">${cityNames.map(c => `<option value="${c}">${c}</option>`).join('')}</select>
-                <input type="number" id="newPrice" placeholder="Ціна (грн)" style="flex:1;" required>
-                <button type="submit" style="width: auto; margin-top: 0;">Додати</button>
-              </form>
-            </div>
+              </div>
+              <div class="form-group">
+                <input type="number" id="newPrice" placeholder="Ціна (грн)" required>
+              </div>
+              <button type="submit">Додати тариф</button>
+            </form>
+          </div>
+
+          <div class="panel" style="max-width: 100%;">
+            <h3 style="font-size: 14px; margin-bottom: 10px; color: var(--accent);">Список тарифів</h3>
             <table>
               <tr><th>Звідки</th><th>Куди</th><th>Ціна</th><th>Дії</th></tr>
               ${tariffs.map((t, index) => `
@@ -261,6 +279,20 @@
               `).join('')}
             </table>
           </div>`;
+
+        document.getElementById('addCityForm').onsubmit = (e) => {
+          e.preventDefault();
+          const cityName = document.getElementById('newCityName').value.trim();
+          if (!cityName) return;
+          if (cityNames.includes(cityName)) {
+            alert("Таке місто вже існує!");
+            return;
+          }
+          cityNames.push(cityName);
+          saveCities(cityNames);
+          alert('Місто успішно додано!');
+          switchPage('routes-tariffs');
+        };
 
         document.getElementById('addTariffForm').onsubmit = (e) => {
           e.preventDefault();
@@ -283,11 +315,11 @@
             <form id="driverRegForm">
               <div class="form-group">
                 <label>Ім'я водія</label>
-                <input type="text" id="driverName" placeholder="Введіть ПІБ водія">
+                <input type="text" id="driverName" placeholder="Введіть ПІБ водія" required>
               </div>
               <div class="form-group">
                 <label>Номер телефону</label>
-                <input type="text" id="driverPhone" placeholder="+380...">
+                <input type="text" id="driverPhone" placeholder="+380..." required>
               </div>
               <div class="form-group">
                 <label>Telegram ID (необов'язково)</label>
@@ -329,11 +361,11 @@
             <form id="dispatcherForm">
               <div class="form-group">
                 <label>Логін диспетчера</label>
-                <input type="text" id="dispLogin" placeholder="Введіть логін">
+                <input type="text" id="dispLogin" placeholder="Введіть логін" required>
               </div>
               <div class="form-group">
                 <label>Пароль</label>
-                <input type="password" id="dispPass" placeholder="Введіть пароль">
+                <input type="password" id="dispPass" placeholder="Введіть пароль" required>
               </div>
               <button type="submit">Додати диспетчера</button>
             </form>
