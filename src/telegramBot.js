@@ -87,7 +87,7 @@ if (botEnabled) {
       if (!driver) return ctx.reply('Код не знайдено. Перевірте код у диспетчера.');
 
       await pool.query(
-        'UPDATE drivers SET telegram_chat_id=NULL WHERE telegram_chat_id=$1 AND id<>$2',
+        'UPDATE drivers SET telegram_chat_id=NULL WHERE telegram_chat_id::text=$1 AND id<>$2',
         [String(ctx.chat.id), driver.id]
       );
 
@@ -106,22 +106,34 @@ if (botEnabled) {
   });
 
   bot.hears('🟢 Вийти онлайн', async (ctx) => {
-    await pool.query('UPDATE drivers SET status=$1 WHERE telegram_chat_id=$2', ['online', String(ctx.chat.id)]);
-    await ctx.reply('Статус: онлайн ✅. Очікуйте замовлення.', mainKeyboard());
+    try {
+      await pool.query('UPDATE drivers SET status=$1 WHERE telegram_chat_id::text=$2', ['online', String(ctx.chat.id)]);
+      await ctx.reply('Статус: онлайн ✅. Очікуйте замовлення.', mainKeyboard());
+    } catch (err) {
+      console.error('Помилка онлайн:', err);
+    }
   });
 
   bot.hears('🔴 Піти офлайн', async (ctx) => {
-    await pool.query('UPDATE drivers SET status=$1 WHERE telegram_chat_id=$2', ['offline', String(ctx.chat.id)]);
-    await ctx.reply('Статус: офлайн 🚫. Нові замовлення не надходитимуть.', mainKeyboard());
+    try {
+      await pool.query('UPDATE drivers SET status=$1 WHERE telegram_chat_id::text=$2', ['offline', String(ctx.chat.id)]);
+      await ctx.reply('Статус: офлайн 🚫. Нові замовлення не надходитимуть.', mainKeyboard());
+    } catch (err) {
+      console.error('Помилка офлайн:', err);
+    }
   });
 
   bot.hears('📍 Оновити локацію', async (ctx) => {
-    const cities = await getDistinctCities();
-    await ctx.reply('Оберіть спосіб визначення локації: натисніть кнопку GPS нижче або оберіть місто зі списку.', locationKeyboard());
-    if (cities.length > 0) {
-      await ctx.reply('Оберіть місто:', citiesInlineKeyboard(cities));
-    } else {
-      await ctx.reply('Диспетчер ще не додав жодного міста до списку — скористайтесь GPS.');
+    try {
+      const cities = await getDistinctCities();
+      await ctx.reply('Оберіть спосіб визначення локації: натисніть кнопку GPS нижче або оберіть місто зі списку.', locationKeyboard());
+      if (cities.length > 0) {
+        await ctx.reply('Оберіть місто:', citiesInlineKeyboard(cities));
+      } else {
+        await ctx.reply('Диспетчер ще не додав жодного міста до списку — скористайтесь GPS.');
+      }
+    } catch (err) {
+      console.error('Помилка оновлення локації:', err);
     }
   });
 
@@ -133,11 +145,13 @@ if (botEnabled) {
   bot.on('location', async (ctx) => {
     try {
       const { latitude, longitude } = ctx.message.location;
+      const chatId = String(ctx.chat.id);
+
       const result = await pool.query(
         `UPDATE drivers 
          SET current_lat=$1, current_lng=$2, current_city=NULL, location_updated_at=now()
-         WHERE telegram_chat_id=$3`,
-        [latitude, longitude, String(ctx.chat.id)]
+         WHERE telegram_chat_id::text=$3`,
+        [latitude, longitude, chatId]
       );
 
       if (result.rowCount === 0) {
@@ -147,7 +161,7 @@ if (botEnabled) {
       }
     } catch (err) {
       console.error('Помилка оновлення GPS:', err);
-      await ctx.reply('❌ Помилка оновлення локації. Спробуйте ще раз.');
+      await ctx.reply('❌ Помилка збереження локації. Зверніться до диспетчера.');
     }
   });
 
@@ -158,7 +172,7 @@ if (botEnabled) {
       await pool.query(
         `UPDATE drivers 
          SET current_city=$1, current_lat=NULL, current_lng=NULL, location_updated_at=now()
-         WHERE telegram_chat_id=$2`,
+         WHERE telegram_chat_id::text=$2`,
         [city, String(ctx.chat.id)]
       );
       await ctx.editMessageReplyMarkup(null);
