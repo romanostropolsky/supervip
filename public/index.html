@@ -52,6 +52,7 @@
     .stop-badge { background: #334155; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; border: 1px solid #475569; }
     .stop-arrow { color: #f59e0b; font-weight: bold; }
 
+    /* Картки статистики для Звітів */
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px; }
     .stat-card { background: #0f172a; padding: 1.2rem; border-radius: 8px; border: 1px solid #334155; text-align: center; }
     .stat-card h4 { color: #94a3b8; font-size: 0.85rem; margin-bottom: 5px; }
@@ -345,6 +346,7 @@
     async function loadOrders() {
       globalOrders = await (await fetch('/api/orders')).json();
       
+      // Рендеринг у таб замовлень
       document.querySelector('#ordersTable').innerHTML = globalOrders.map(o => {
         let stopsHtml = '';
         if (o.stops && Array.isArray(o.stops)) {
@@ -369,6 +371,7 @@
         `;
       }).join('');
 
+      // Рендеринг у Звіти
       let totalSum = 0;
       document.querySelector('#reportsTable').innerHTML = globalOrders.map(o => {
         let routeStr = '';
@@ -395,16 +398,18 @@
         `;
       }).join('');
 
+      // Статистичні підсумки
       const count = globalOrders.length;
       document.getElementById('statTotalOrders').innerText = count;
       document.getElementById('statTotalPrice').innerText = `${totalSum.toLocaleString()} грн`;
       document.getElementById('statAvgPrice').innerText = count > 0 ? `${Math.round(totalSum / count).toLocaleString()} грн` : '0 грн';
     }
 
+    // --- ЕКСПОРТ В EXCEL / CSV ---
     function exportToExcel() {
       if (!globalOrders.length) return alert('Немає замовлень для завантаження!');
 
-      let csvContent = "\uFEFF";
+      let csvContent = "\uFEFF"; // UTF-8 BOM для правильного відображення кирилиці в Excel
       csvContent += "ID;Дата Створення;Дата Виїзду;Клієнт;Пасажирів;Маршрут;Водій;Ціна (грн)\n";
 
       globalOrders.forEach(o => {

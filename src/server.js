@@ -17,7 +17,6 @@ const pool = new Pool({
 });
 
 const bot = process.env.TELEGRAM_BOT_TOKEN ? new Telegraf(process.env.TELEGRAM_BOT_TOKEN) : null;
-const CHAT_ID = process.env.TELEGRAM_CHAT_ID; // ID чату або каналу для сповіщень
 
 // --- ІНІЦІАЛІЗАЦІЯ БАЗИ ДАНИХ ---
 async function initSchema() {
@@ -70,7 +69,7 @@ async function initSchema() {
 }
 
 // --- АВТОРИЗАЦІЯ ---
-app.post('/api/login', async (req, res) => {
+const handleLogin = async (req, res) => {
   try {
     const username = req.body.username || req.body.login;
     const password = req.body.password || req.body.pass;
@@ -93,7 +92,9 @@ app.post('/api/login', async (req, res) => {
   } catch (err) {
     res.status(500).json({ status: 'error', message: err.message });
   }
-});
+};
+
+app.post('/api/login', handleLogin);
 
 // --- REST API ДЛЯ ВОДІЇВ ---
 app.get('/api/drivers', async (req, res) => {
@@ -146,41 +147,13 @@ app.get('/api/orders', async (req, res) => {
 app.post('/api/orders', async (req, res) => {
   try {
     const { client, passengers, departure_time, stops, price, driver_id } = req.body;
-
-    // Збереження в базу даних
     const result = await pool.query(
       `INSERT INTO orders (client, passengers, departure_time, stops, price, driver_id) 
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [
-        client, 
-        passengers || 1, 
-        departure_time || null, 
-        JSON.stringify(stops || []), 
-        price ? parseFloat(price) : 0, 
-        driver_id ? parseInt(driver_id) : null
-      ]
+      [client, passengers || 1, departure_time, JSON.stringify(stops), price, driver_id || null]
     );
-
-    const createdOrder = result.rows[0];
-
-    // Відправка в Telegram-бот (якщо підключено бот і вказано CHAT_ID або відправка водію)
-    if (bot) {
-      let routeStr = Array.isArray(stops) ? stops.map(s => `${s.city} (${s.time || ''})`).join(' ➔ ') : '';
-      let msg = `🚨 *НОВЕ ЗАМОВЛЕННЯ #${createdOrder.id}*\n\n` +
-                `👤 *Клієнт:* ${client}\n` +
-                `👥 *Пасажирів:* ${passengers || 1}\n` +
-                `📍 *Маршрут:* ${routeStr}\n` +
-                `💰 *Ціна:* ${price || 0} грн\n` +
-                `📅 *Виїзд:* ${departure_time || 'Не вказано'}`;
-
-      if (CHAT_ID) {
-        bot.telegram.sendMessage(CHAT_ID, msg, { parse_mode: 'Markdown' }).catch(e => console.error('TG send error:', e.message));
-      }
-    }
-
-    res.json(createdOrder);
+    res.json(result.rows[0]);
   } catch (err) {
-    console.error('Error creating order:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -196,31 +169,19 @@ app.delete('/api/orders/:id', async (req, res) => {
 
 // --- МІСТА ---
 app.get('/api/cities', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM cities ORDER BY name ASC');
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  const result = await pool.query('SELECT * FROM cities ORDER BY name ASC');
+  res.json(result.rows);
 });
 
 app.post('/api/cities', async (req, res) => {
-  try {
-    const { name } = req.body;
-    const result = await pool.query('INSERT INTO cities (name) VALUES ($1) RETURNING *', [name.trim()]);
-    res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  const { name } = req.body;
+  const result = await pool.query('INSERT INTO cities (name) VALUES ($1) RETURNING *', [name.trim()]);
+  res.json(result.rows[0]);
 });
 
 app.delete('/api/cities/:id', async (req, res) => {
-  try {
-    await pool.query('DELETE FROM cities WHERE id = $1', [req.params.id]);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  await pool.query('DELETE FROM cities WHERE id = $1', [req.params.id]);
+  res.json({ success: true });
 });
 
 app.get('*', (req, res) => {
