@@ -1,320 +1,212 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Диспетчерська</title>
-<style>
-  :root{
-    --bg:#14171c; --panel:#1b1f27; --panel-2:#20252f; --border:#2a3140; --text:#e8ebf0; --muted:#8b93a3;
-    --accent:#f5a623; --accent-dim:#7a5719; --ok:#3ecf8e; --ok-dim:#173a2c; --bad:#ef5350; --bad-dim:#3a1c1c;
-    --info:#4f9df7; --info-dim:#17263a; --mono:"SF Mono","Consolas","Roboto Mono",monospace; --sans:-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
-  }
-  *{box-sizing:border-box;}
-  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);}
-  .top{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:var(--panel);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20;}
-  .brand{display:flex;align-items:center;gap:10px;}
-  .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);}
-  .brand h1{font-size:15px;letter-spacing:2px;text-transform:uppercase;font-weight:800;margin:0;}
-  .board{display:flex;gap:18px;font-family:var(--mono);font-size:13px;color:var(--accent);}
-  .board span{color:var(--muted);font-family:var(--sans);margin-right:6px;font-size:11px;text-transform:uppercase;}
-  .body-row{display:flex;min-height:calc(100vh - 57px);}
-  .sidebar{width:220px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);padding:16px 10px;}
-  .sidebar button{display:block;width:100%;text-align:left;background:transparent;border:none;color:var(--muted);padding:10px 12px;border-radius:8px;font-size:13.5px;font-weight:600;cursor:pointer;margin-bottom:2px;}
-  .sidebar button:hover{background:var(--panel-2);color:var(--text);}
-  .sidebar button.active{background:var(--accent-dim);color:var(--accent);}
-  .main{flex:1;padding:24px 28px;max-width:1200px;}
-  h2.page-title{font-size:20px;margin:0 0 4px 0;font-weight:800;}
-  p.page-sub{color:var(--muted);font-size:13px;margin:0 0 20px 0;}
-  .panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:18px;}
-  .panel h3{margin:0 0 14px 0;font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);}
-  label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;margin-top:12px;font-weight:600;}
-  select,input[type=text],input[type=number],input[type=tel],input[type=password],input[type=datetime-local]{width:100%;background:var(--panel-2);border:1px solid var(--border);color:var(--text);padding:9px 10px;border-radius:7px;font-size:14px;font-family:var(--sans);}
-  .row{display:flex;gap:14px;flex-wrap:wrap;} .row>div{flex:1;min-width:160px;}
-  .checkbox-row{display:flex;align-items:center;gap:8px;margin-top:14px;} .checkbox-row input{width:auto;}
-  .btn{background:var(--accent);color:#1a1200;border:none;padding:10px 18px;border-radius:8px;font-weight:700;font-size:13.5px;cursor:pointer;margin-top:16px;}
-  .btn.secondary{background:var(--panel-2);color:var(--text);border:1px solid var(--border);}
-  .btn.danger{background:var(--bad-dim);color:#ff9d9a;border:1px solid var(--bad);}
-  .btn.small{padding:6px 12px;font-size:12px;margin-top:0;}
-  .price-preview{margin-top:16px;padding:14px;background:var(--panel-2);border-radius:8px;border:1px dashed var(--border);font-family:var(--mono);}
-  .price-preview .big{font-size:26px;color:var(--accent);font-weight:700;}
-  .price-preview .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;}
-  table{width:100%;border-collapse:collapse;font-size:13px;}
-  th{text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;padding:8px 10px;border-bottom:1px solid var(--border);}
-  td{padding:10px 10px;border-bottom:1px solid var(--border);}
-  .mono{font-family:var(--mono);}
-  .chip{display:inline-flex;padding:4px 9px;border-radius:20px;font-size:11.5px;font-weight:700;text-transform:uppercase;}
-  .chip.new{background:#2a2f3a;color:var(--muted);} .chip.sent{background:var(--info-dim);color:var(--info);}
-  .chip.confirmed,.chip.in_progress{background:var(--accent-dim);color:var(--accent);}
-  .chip.completed{background:var(--ok-dim);color:var(--ok);} .chip.cancelled{background:var(--bad-dim);color:var(--bad);}
-  .status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;}
-  .status-dot.online{background:var(--ok);} .status-dot.offline{background:var(--muted);}
-  .empty{color:var(--muted);font-size:13px;padding:20px;text-align:center;}
-  .toast{position:fixed;bottom:20px;right:20px;background:var(--panel);border:1px solid var(--accent);padding:12px 18px;border-radius:8px;font-size:13px;z-index:100;max-width:340px;}
-  .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;}
-  .login-box{width:320px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:28px;}
-  @media (max-width:800px){.body-row{flex-direction:column;} .sidebar{width:100%;display:flex;flex-wrap:wrap;gap:4px;} .main{padding:16px;}}
-</style>
+  <meta charset="UTF-8">
+  <title>Диспетчерська</title>
+  <style>
+    :root {
+      --bg: #12141c;
+      --panel: #1a1d26;
+      --panel-2: #222632;
+      --accent: #f59e0b;
+      --accent-hover: #d97706;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --border: #2e3545;
+      --ok: #10b981;
+      --bad: #ef4444;
+      --mono: monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+    body { background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
+    aside { width: 240px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+    .logo { padding: 20px; font-weight: bold; font-size: 16px; color: var(--accent); letter-spacing: 1px; border-bottom: 1px solid var(--border); }
+    .menu { padding: 10px; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; flex: 1; }
+    .menu-item { padding: 10px 14px; border-radius: 6px; cursor: pointer; color: var(--muted); font-size: 14px; transition: 0.2s; }
+    .menu-item:hover, .menu-item.active { background: var(--panel-2); color: var(--text); }
+    main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    header { height: 60px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: flex-end; padding: 0 20px; gap: 20px; background: var(--panel); }
+    .top-stat { font-size: 13px; color: var(--muted); }
+    .top-stat span { color: var(--accent); font-weight: bold; }
+    .content { padding: 20px; overflow-y: auto; flex: 1; }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px; max-width: 800px; }
+    .page-title { font-size: 20px; margin-bottom: 20px; font-weight: 600; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; }
+    input, select { width: 100%; padding: 10px; background: var(--panel-2); border: 1px solid var(--border); color: var(--text); border-radius: 6px; font-size: 14px; }
+    button { background: var(--accent); color: #000; border: none; padding: 12px 20px; font-weight: bold; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+    button:hover { background: var(--accent-hover); }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 14px; }
+    th { color: var(--muted); font-size: 11px; text-transform: uppercase; }
+    .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+    .badge.new { background: #3b82f6; color: #fff; }
+    .badge.sent { background: #f59e0b; color: #000; }
+    .badge.completed { background: #10b981; color: #fff; }
+    .badge.cancelled { background: #ef4444; color: #fff; }
+  </style>
 </head>
 <body>
-<div id="root"></div>
-<script>
-const API = '/api';
-let token = localStorage.getItem('token') || null;
-let role = localStorage.getItem('role') || null;
-let state = { tab:'new_order', config:null, drivers:[], orders:[], dispatchers:[], toast:null, editingOrderId:null };
-
-function authHeaders(){ return token ? { 'Authorization': 'Bearer '+token } : {}; }
-async function api(path, opts={}){
-  const res = await fetch(API+path, {
-    ...opts,
-    headers: { 'Content-Type':'application/json', ...authHeaders(), ...(opts.headers||{}) },
-    body: opts.body ? JSON.stringify(opts.body) : undefined,
-  });
-  if(res.status===401){ logout(); throw new Error('Сесія завершена, увійдіть знову'); }
-  const data = await res.json().catch(()=>({}));
-  if(!res.ok) throw new Error(data.error || 'Помилка запиту');
-  return data;
-}
-function showToast(msg){ state.toast=msg; render(); setTimeout(()=>{state.toast=null; render();},3500); }
-function logout(){ token=null; role=null; localStorage.removeItem('token'); localStorage.removeItem('role'); render(); }
-
-const STATUS_LABELS = {new:'Нове',sent:'Надіслано водію',confirmed:'Підтверджено',in_progress:'В дорозі',completed:'Завершено',cancelled:'Скасовано'};
-function priceOf(cfg, routeId, carTypeId){
-  const p = cfg.prices.find(p=>String(p.route_id)===String(routeId) && String(p.car_type_id)===String(carTypeId));
-  return p || {price:0, commission:0};
-}
-
-async function render(){
-  const root = document.getElementById('root');
-  if(!token){ root.innerHTML = loginHtml(); bindLogin(); return; }
-
-  if(!state.config){
-    try{
-      state.config = await api('/config');
-      state.drivers = await api('/drivers');
-      state.orders = await api('/orders');
-    }catch(e){ showToast(e.message); }
-  }
-
-  root.innerHTML = `
-    <div class="top">
-      <div class="brand"><span class="dot"></span><h1>Диспетчерська</h1></div>
-      <div class="board">
-        <div><span>Водіїв онлайн</span>${state.drivers.filter(d=>d.status==='online').length}</div>
-        <div><span>Активних замовлень</span>${state.orders.filter(o=>['sent','confirmed','in_progress'].includes(o.status)).length}</div>
-      </div>
-      <button class="btn secondary small" onclick="logout()">Вийти</button>
+  <aside>
+    <div class="logo">ДИСПЕТЧЕРСЬКА</div>
+    <div class="menu" id="menu">
+      <div class="menu-item active" data-page="new-order">Нове замовлення</div>
+      <div class="menu-item" data-page="orders">Замовлення</div>
+      <div class="menu-item" data-page="drivers">Водії</div>
+      <div class="menu-item" data-page="reports">Звіт</div>
     </div>
-    <div class="body-row">
-      <div class="sidebar" id="sidebar"></div>
-      <div class="main" id="main"></div>
-    </div>
-  `;
-  renderSidebar();
-  renderMain();
-  if(state.toast){
-    const d=document.createElement('div'); d.className='toast'; d.textContent=state.toast; document.body.appendChild(d);
-  }
-}
+  </aside>
+  <main>
+    <header>
+      <div class="top-stat">ВОДІЇ ОНЛАЙН <span id="onlineDriversCount">0</span></div>
+      <div class="top-stat">АКТИВНИХ ЗАМОВЛЕНЬ <span id="activeOrdersCount">0</span></div>
+    </header>
+    <div class="content" id="mainContent"></div>
+  </main>
 
-function loginHtml(){
-  return `
-  <div class="login-wrap">
-    <div class="login-box">
-      <h2 class="page-title">Вхід диспетчера</h2>
-      <p class="page-sub">Диспетчерська система обліку замовлень</p>
-      <label>Логін</label><input type="text" id="lg_user">
-      <label>Пароль</label><input type="password" id="lg_pass">
-      <button class="btn" style="width:100%" onclick="doLogin()">Увійти</button>
-      <div id="loginErr" style="color:var(--bad);font-size:12px;margin-top:10px"></div>
-    </div>
-  </div>`;
-}
-function bindLogin(){
-  document.getElementById('lg_pass').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
-}
-async function doLogin(){
-  const username = document.getElementById('lg_user').value.trim();
-  const password = document.getElementById('lg_pass').value;
-  try{
-    const data = await api('/auth/login', {method:'POST', body:{username,password}});
-    token = data.token; role = data.role;
-    localStorage.setItem('token', token); localStorage.setItem('role', role);
-    state.config=null;
-    render();
-  }catch(e){ document.getElementById('loginErr').textContent = e.message; }
-}
+  <script>
+    async function api(url, method = 'GET', data = null) {
+      const opts = { method, headers: { 'Content-Type': 'application/json' } };
+      if (data) opts.body = JSON.stringify(data);
+      const res = await fetch('/api' + url, opts);
+      return res.json();
+    }
 
-const BASE_TABS = [['new_order','Нове замовлення'],['orders','Замовлення'],['drivers','Водії'],['routes','Маршрути і тарифи'],['register','Реєстрація водія'],['reports','Звіт']];
-function currentTabs(){ return role==='admin' ? [...BASE_TABS, ['dispatchers','Диспетчери']] : BASE_TABS; }
-function renderSidebar(){
-  document.getElementById('sidebar').innerHTML = currentTabs().map(([k,l])=>`<button class="${state.tab===k?'active':''}" onclick="setTab('${k}')">${l}</button>`).join('');
-}
-function setTab(t){ state.tab=t; state.editingOrderId=null; render(); }
-function renderMain(){
-  const main = document.getElementById('main');
-  if(state.tab==='new_order') return renderNewOrder(main);
-  if(state.tab==='orders') return renderOrders(main);
-  if(state.tab==='drivers') return renderDrivers(main);
-  if(state.tab==='routes') return renderRoutes(main);
-  if(state.tab==='register') return renderRegister(main);
-  if(state.tab==='reports') return renderReports(main);
-  if(state.tab==='dispatchers') return renderDispatchers(main);
-}
+    async function loadStats() {
+      try {
+        const drivers = await api('/drivers');
+        document.getElementById('onlineDriversCount').innerText = drivers.filter(d => d.status === 'online').length;
+        const orders = await api('/orders');
+        document.getElementById('activeOrdersCount').innerText = orders.filter(o => o.status === 'new' || o.status === 'sent').length;
+      } catch(e) {}
+    }
 
-function renderNewOrder(main){
-  const cfg = state.config;
-  main.innerHTML = `
-    <h2 class="page-title">Нове замовлення</h2>
-    <div class="panel">
-      <div class="row">
-        <div><label>Маршрут</label><select id="f_route">${cfg.routes.map(r=>`<option value="${r.id}">${r.start_city} → ${r.end_city}</option>`).join('')}</select></div>
-        <div><label>Клас авто</label><select id="f_car">${cfg.carTypes.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')}</select></div>
-      </div>
-      <div class="row">
-        <div><label>Ім'я пасажира</label><input type="text" id="f_passenger_name" placeholder="Іван"></div>
-        <div><label>Телефон (міжнародний формат)</label><input type="tel" id="f_passenger_phone" placeholder="+380... або +373..."></div>
-      </div>
-      <div class="row">
-        <div><label>Час подачі</label><input type="datetime-local" id="f_pickup_time"></div>
-        <div><label>Час приїзду (орієнтовно)</label><input type="datetime-local" id="f_arrival_time"></div>
-      </div>
-      <div class="row">
-        <div><label>Пасажирів</label><input type="number" id="f_pax" min="1" max="8" value="1"></div>
-        <div><label>Водій</label><select id="f_driver"></select></div>
-      </div>
-      <div class="checkbox-row"><input type="checkbox" id="f_luggage"><label style="margin:0">Є багаж</label></div>
-      <div class="price-preview" id="pricePreview"></div>
-      <button class="btn" onclick="submitOrder()">Створити замовлення</button>
-    </div>`;
-  document.getElementById('f_route').onchange = updatePreview;
-  document.getElementById('f_car').onchange = updatePreview;
-  updatePreview();
-}
-function updatePreview(){
-  const cfg = state.config;
-  const routeId = document.getElementById('f_route').value;
-  const carId = document.getElementById('f_car').value;
-  const p = priceOf(cfg, routeId, carId);
-  document.getElementById('pricePreview').innerHTML = `<span class="lbl">До сплати</span><br><span class="big">${p.price} грн</span> &nbsp; <span class="lbl">комісія: ${p.commission} грн</span>`;
-  const eligible = state.drivers.filter(d=>d.status==='online' && String(d.car_type_id)===String(carId) && !d.current_order_id && d.telegram_chat_id);
-  const sel = document.getElementById('f_driver');
-  sel.innerHTML = '<option value="">— призначити пізніше —</option>' + eligible.map(d=>{
-    const loc = d.current_city ? ` — 📍${d.current_city}` : (d.current_lat?' — 📡GPS':'');
-    return `<option value="${d.id}">${d.name}${loc}</option>`;
-  }).join('');
-}
-async function submitOrder(){
-  const routeId = document.getElementById('f_route').value;
-  const carTypeId = document.getElementById('f_car').value;
-  const passengers = parseInt(document.getElementById('f_pax').value)||1;
-  const luggage = document.getElementById('f_luggage').checked;
-  const driverId = document.getElementById('f_driver').value || null;
-  const passengerName = document.getElementById('f_passenger_name').value.trim();
-  const passengerPhone = document.getElementById('f_passenger_phone').value.trim();
-  const pickupTime = document.getElementById('f_pickup_time').value.trim();
-  const arrivalTime = document.getElementById('f_arrival_time').value.trim();
-  try{
-    await api('/orders', {method:'POST', body:{routeId,carTypeId,passengers,luggage,driverId,passengerName,passengerPhone,pickupTime,arrivalTime}});
-    showToast('Замовлення створено');
-    state.orders = await api('/orders'); state.drivers = await api('/drivers');
-    state.tab='orders'; render();
-  }catch(e){ showToast(e.message); }
-}
+    const pages = {
+      'new-order': async (el) => {
+        const [routes, carTypes, drivers] = await Promise.all([api('/cities'), api('/config'), api('/drivers')]);
+        el.innerHTML = `
+          <h2 class="page-title">Нове замовлення</h2>
+          <div class="panel">
+            <form id="orderForm">
+              <div class="form-group">
+                <label>Маршрут</label>
+                <select id="routeId">
+                  ${routes.map(r => `<option value="${r.id}">${r.from_city} → ${r.to_city}</option>`).join('')}
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Клас авто</label>
+                <select id="carTypeId">
+                  ${carTypes.carTypes ? carTypes.carTypes.map(c => `<option value="${c.id}">${c.name}</option>`).join('') : ''}
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Ім'я пасажира</label>
+                <input type="text" id="passengerName" placeholder="Введіть ім'я">
+              </div>
+              <div class="form-group">
+                <label>Телефон пасажира</label>
+                <input type="text" id="passengerPhone" placeholder="+380...">
+              </div>
+              <div class="form-group">
+                <label>Час подачі</label>
+                <input type="datetime-local" id="pickupTime">
+              </div>
+              <div class="form-group">
+                <label>Призначити водія (необов'язково)</label>
+                <select id="driverId">
+                  <option value="">-- Автоматично або без водія --</option>
+                  ${drivers.filter(d => d.status === 'online').map(d => `<option value="${d.id}">${d.name}</option>`).join('')}
+                </select>
+              </div>
+              <button type="submit">Створити замовлення</button>
+            </form>
+          </div>`;
 
-function renderOrders(main){
-  const cfg = state.config;
-  const orders = [...state.orders].sort((a,b)=> new Date(b.created_at)-new Date(a.created_at));
-  main.innerHTML = `
-    <h2 class="page-title">Замовлення</h2>
-    <div id="editBox"></div>
-    <div class="panel">
-      ${orders.length===0?'<div class="empty">Замовлень ще немає</div>':`
-      <table><tr><th>Маршрут</th><th>Пасажир</th><th>Телефон</th><th>Час подачі</th><th>Час приїзду</th><th>Статус</th><th>Водій</th><th></th></tr>
-      ${orders.map(o=>{
-        const route = cfg.routes.find(r=>r.id===o.route_id)||{start_city:'?',end_city:'?'};
-        const drv = state.drivers.find(d=>d.id===o.driver_id);
-        return `<tr>
-          <td>${route.start_city} → ${route.end_city}</td>
-          <td>${o.passenger_name||'—'}</td><td class="mono">${o.passenger_phone||'—'}</td>
-          <td class="mono">${o.pickup_time||'—'}</td>
-          <td class="mono">${o.arrival_time||'—'}</td>
-          <td><span class="chip ${o.status}">${STATUS_LABELS[o.status]}</span></td>
-          <td>${drv?drv.name:(o.status==='new'?assignSelect(o):'—')}</td>
-          <td style="white-space:nowrap">
-            ${o.status==='new'?`<button class="btn secondary small" onclick="openEditOrder(${o.id})">Редагувати</button>`:''}
-            ${o.status!=='completed'&&o.status!=='cancelled'?`<button class="btn danger small" onclick="cancelOrder(${o.id})">Скасувати</button>`:''}
-          </td>
-        </tr>`;
-      }).join('')}</table>`}
-    </div>`;
-  if(state.editingOrderId) renderEditOrder();
-}
-function openEditOrder(id){ state.editingOrderId=id; renderEditOrder(); }
-function renderEditOrder(){
-  const cfg = state.config;
-  const o = state.orders.find(x=>x.id===state.editingOrderId);
-  const box = document.getElementById('editBox');
-  if(!o || !box) return;
-  box.innerHTML = `
-    <div class="panel">
-      <h3>Редагування №${o.id}</h3>
-      <div class="row">
-        <div><label>Ім'я</label><input type="text" id="e_name" value="${o.passenger_name||''}"></div>
-        <div><label>Телефон</label><input type="tel" id="e_phone" value="${o.passenger_phone||''}"></div>
-      </div>
-      <div class="row">
-        <div><label>Час подачі</label><input type="datetime-local" id="e_pickup" value="${o.pickup_time||''}"></div>
-        <div><label>Час приїзду</label><input type="datetime-local" id="e_arrival" value="${o.arrival_time||''}"></div>
-      </div>
-      <button class="btn" onclick="saveEditOrder(${o.id})">Зберегти</button>
-      <button class="btn secondary" onclick="state.editingOrderId=null; render();">Скасувати</button>
-    </div>`;
-}
-async function saveEditOrder(id){
-  const passengerName = document.getElementById('e_name').value.trim();
-  const passengerPhone = document.getElementById('e_phone').value.trim();
-  const pickupTime = document.getElementById('e_pickup').value.trim();
-  const arrivalTime = document.getElementById('e_arrival').value.trim();
-  try{
-    await api(`/orders/${id}`, {method:'PUT', body:{passengerName,passengerPhone,pickupTime,arrivalTime}});
-    state.orders = await api('/orders');
-    state.editingOrderId=null;
-    showToast('Оновлено');
-    render();
-  }catch(e){ showToast(e.message); }
-}
-function assignSelect(order){
-  const eligible = state.drivers.filter(d=>d.status==='online' && d.car_type_id===order.car_type_id && !d.current_order_id && d.telegram_chat_id);
-  if(eligible.length===0) return '<span style="color:var(--muted);font-size:12px">немає вільних</span>';
-  return `<select onchange="assignDriver(${order.id}, this.value)" style="width:auto;min-width:140px;padding:5px;font-size:12px;"><option value="">— призначити —</option>${eligible.map(d=>`<option value="${d.id}">${d.name}</option>`).join('')}</select>`;
-}
-async function assignDriver(orderId, driverId){
-  if(!driverId) return;
-  try{
-    await api(`/orders/${orderId}/assign`, {method:'POST', body:{driverId}});
-    showToast('Надіслано водію');
-    state.orders = await api('/orders'); state.drivers = await api('/drivers'); render();
-  }catch(e){ showToast(e.message); }
-}
-async function cancelOrder(orderId){
-  await api(`/orders/${orderId}/cancel`, {method:'POST'});
-  state.orders = await api('/orders'); state.drivers = await api('/drivers'); render();
-}
+        document.getElementById('orderForm').onsubmit = async (e) => {
+          e.preventDefault();
+          const data = {
+            routeId: document.getElementById('routeId').value,
+            carTypeId: document.getElementById('carTypeId').value,
+            passengerName: document.getElementById('passengerName').value,
+            passengerPhone: document.getElementById('passengerPhone').value,
+            pickupTime: document.getElementById('pickupTime').value,
+            driverId: document.getElementById('driverId').value || null
+          };
+          const res = await api('/orders', 'POST', data);
+          if (res.error) alert(res.error);
+          else {
+            alert('Замовлення успішно створено!');
+            switchPage('orders');
+          }
+        };
+      },
+      'orders': async (el) => {
+        const [orders, routes] = await Promise.all([api('/orders'), api('/cities')]);
+        const routeMap = {};
+        routes.forEach(r => routeMap[r.id] = `${r.from_city} → ${r.to_city}`);
+        
+        el.innerHTML = `
+          <h2 class="page-title">Замовлення</h2>
+          <div class="panel" style="max-width: 100%;">
+            <table>
+              <tr><th>Маршрут</th><th>Пасажир</th><th>Телефон</th><th>Час подачі</th><th>Статус</th></tr>
+              ${orders.map(o => `
+                <tr>
+                  <td>${routeMap[o.route_id] || '---'}</td>
+                  <td>${o.passenger_name || '—'}</td>
+                  <td>${o.passenger_phone || '—'}</td>
+                  <td>${o.pickup_time ? o.pickup_time.replace('T', ' ') : '—'}</td>
+                  <td><span class="badge ${o.status}">${o.status}</span></td>
+                </tr>
+              `).join('')}
+            </table>
+          </div>`;
+      },
+      'drivers': async (el) => {
+        const drivers = await api('/drivers');
+        el.innerHTML = `
+          <h2 class="page-title">Водії</h2>
+          <div class="panel" style="max-width: 100%;">
+            <table>
+              <tr><th>Ім'я</th><th>Телефон</th><th>Статус</th></tr>
+              ${drivers.map(d => `
+                <tr>
+                  <td>${d.name}</td>
+                  <td>${d.phone || '—'}</td>
+                  <td><span class="badge ${d.status === 'online' ? 'completed' : 'cancelled'}">${d.status}</span></td>
+                </tr>
+              `).join('')}
+            </table>
+          </div>`;
+      },
+      'reports': async (el) => {
+        const orders = await api('/orders');
+        el.innerHTML = `
+          <h2 class="page-title">Звіт</h2>
+          <div class="panel">
+            <div style="font-size: 18px; margin-bottom: 10px;">Усього замовлень: <b>${orders.length}</b></div>
+            <div style="font-size: 16px; color: var(--ok);">Завершено: <b>${orders.filter(o => o.status === 'completed').length}</b></div>
+          </div>`;
+      }
+    };
 
-function renderDrivers(main){
-  main.innerHTML = `<h2 class="page-title">Водії</h2><div class="panel"><table><tr><th>Ім'я</th><th>Телефон</th><th>Статус</th><th>Локація</th></tr>${state.drivers.map(d=>`<tr><td>${d.name}</td><td class="mono">${d.phone||'—'}</td><td><span class="status-dot ${d.status}"></span>${d.status==='online'?'Онлайн':'Офлайн'}</td><td>${d.current_city||'—'}</td></tr>`).join('')}</table></div>`;
-}
-function renderRoutes(main){ main.innerHTML = `<h2 class="page-title">Маршрути</h2><div class="panel"><p>Керування маршрутами...</p></div>`; }
-async function renderReports(main){
-  const r = await api('/reports');
-  main.innerHTML = `<h2 class="page-title">Звіт</h2><div class="panel"><p>Усього замовлень: ${r.totalOrders}</p></div>`;
-}
-async function renderDispatchers(main){ main.innerHTML = `<h2 class="page-title">Диспетчери</h2><div class="panel"><p>Управління акаунтами...</p></div>`; }
-function renderRegister(main){ main.innerHTML = `<h2 class="page-title">Реєстрація</h2><div class="panel"><p>Форма реєстрації...</p></div>`; }
+    function switchPage(pageName) {
+      document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+      const menuItem = document.querySelector(`[data-page="${pageName}"]`);
+      if (menuItem) menuItem.classList.add('active');
+      const mainContent = document.getElementById('mainContent');
+      if (pages[pageName]) pages[pageName](mainContent);
+      loadStats();
+    }
 
-render();
-</script>
+    document.getElementById('menu').onclick = (e) => {
+      const item = e.target.closest('.menu-item');
+      if (item) switchPage(item.dataset.page);
+    };
+
+    switchPage('new-order');
+    setInterval(loadStats, 10000);
+  </script>
 </body>
 </html>
