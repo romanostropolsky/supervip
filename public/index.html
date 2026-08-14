@@ -86,7 +86,11 @@
 
     const pages = {
       'new-order': async (el) => {
-        const [routes, config, drivers] = await Promise.all([api('/cities'), api('/config'), api('/drivers')]);
+        let routes = [];
+        try { routes = await api('/cities'); } catch(e) {}
+        const routeList = Array.isArray(routes) ? routes : (routes.cities || routes.data || []);
+        
+        const [config, drivers] = await Promise.all([api('/config'), api('/drivers')]);
         el.innerHTML = `
           <h2 class="page-title">Нове замовлення</h2>
           <div class="panel">
@@ -94,7 +98,11 @@
               <div class="form-group">
                 <label>Маршрут</label>
                 <select id="routeId">
-                  ${routes.map(r => `<option value="${r.id}">${r.from_city || r.from} → ${r.to_city || r.to}</option>`).join('')}
+                  ${routeList.map(r => `
+                    <option value="${r.id}">
+                      ${r.name || r.title || (r.from_city || r.from || r.departure || r.city_from || 'Звідки')} → ${r.to_city || r.to || r.arrival || r.city_to || 'Куди'}
+                    </option>
+                  `).join('')}
                 </select>
               </div>
               <div class="form-group">
@@ -145,9 +153,12 @@
         };
       },
       'orders': async (el) => {
-        const [orders, routes] = await Promise.all([api('/orders'), api('/cities')]);
+        const [orders, routesRes] = await Promise.all([api('/orders'), api('/cities')]);
+        const routeList = Array.isArray(routesRes) ? routesRes : (routesRes.cities || routesRes.data || []);
         const routeMap = {};
-        routes.forEach(r => routeMap[r.id] = `${r.from_city || r.from} → ${r.to_city || r.to}`);
+        routeList.forEach(r => {
+          routeMap[r.id] = `${r.from_city || r.from || r.departure || r.city_from || 'Звідки'} → ${r.to_city || r.to || r.arrival || r.city_to || 'Куди'}`;
+        });
         
         el.innerHTML = `
           <h2 class="page-title">Замовлення</h2>
@@ -184,16 +195,19 @@
           </div>`;
       },
       'routes-tariffs': async (el) => {
-        const routes = await api('/cities');
+        let routes = [];
+        try { routes = await api('/cities'); } catch(e) {}
+        const routeList = Array.isArray(routes) ? routes : (routes.cities || routes.data || []);
+        
         el.innerHTML = `
           <h2 class="page-title">Маршрути і тарифи</h2>
           <div class="panel" style="max-width: 100%;">
             <table>
               <tr><th>Звідки</th><th>Куди</th></tr>
-              ${routes.map(r => `
+              ${routeList.map(r => `
                 <tr>
-                  <td>${r.from_city || r.from || r.departure || '—'}</td>
-                  <td>${r.to_city || r.to || r.arrival || '—'}</td>
+                  <td>${r.from_city || r.from || r.departure || r.city_from || '—'}</td>
+                  <td>${r.to_city || r.to || r.arrival || r.city_to || '—'}</td>
                 </tr>
               `).join('')}
             </table>
