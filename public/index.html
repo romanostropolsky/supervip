@@ -86,9 +86,9 @@
 
     const pages = {
       'new-order': async (el) => {
-        let routes = [];
-        try { routes = await api('/cities'); } catch(e) {}
-        const routeList = Array.isArray(routes) ? routes : (routes.cities || routes.data || []);
+        let cities = [];
+        try { cities = await api('/cities'); } catch(e) {}
+        const cityList = Array.isArray(cities) ? cities : (cities.cities || cities.data || []);
         
         const [config, drivers] = await Promise.all([api('/config'), api('/drivers')]);
         el.innerHTML = `
@@ -96,9 +96,9 @@
           <div class="panel">
             <form id="orderForm">
               <div class="form-group">
-                <label>Маршрут</label>
+                <label>Маршрут (Місто)</label>
                 <select id="routeId">
-                  ${routeList.map(r => `<option value="${r.id}">${r.name || r.title || JSON.stringify(r)}</option>`).join('')}
+                  ${cityList.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
                 </select>
               </div>
               <div class="form-group">
@@ -149,21 +149,21 @@
         };
       },
       'orders': async (el) => {
-        const [orders, routesRes] = await Promise.all([api('/orders'), api('/cities')]);
-        const routeList = Array.isArray(routesRes) ? routesRes : (routesRes.cities || routesRes.data || []);
-        const routeMap = {};
-        routeList.forEach(r => {
-          routeMap[r.id] = r.name || r.title || JSON.stringify(r);
+        const [orders, citiesRes] = await Promise.all([api('/orders'), api('/cities')]);
+        const cityList = Array.isArray(citiesRes) ? citiesRes : (citiesRes.cities || citiesRes.data || []);
+        const cityMap = {};
+        cityList.forEach(c => {
+          cityMap[c.id] = c.name;
         });
         
         el.innerHTML = `
           <h2 class="page-title">Замовлення</h2>
           <div class="panel" style="max-width: 100%;">
             <table>
-              <tr><th>Маршрут</th><th>Пасажир</th><th>Телефон</th><th>Час подачі</th><th>Статус</th></tr>
+              <tr><th>Маршрут / Місто</th><th>Пасажир</th><th>Телефон</th><th>Час подачі</th><th>Статус</th></tr>
               ${orders.map(o => `
                 <tr>
-                  <td>${routeMap[o.route_id] || 'Маршрут #' + o.route_id}</td>
+                  <td>${cityMap[o.route_id] || 'Місто #' + o.route_id}</td>
                   <td>${o.passenger_name || '—'}</td>
                   <td>${o.passenger_phone || '—'}</td>
                   <td>${o.pickup_time ? o.pickup_time.replace('T', ' ') : '—'}</td>
@@ -191,16 +191,21 @@
           </div>`;
       },
       'routes-tariffs': async (el) => {
-        let routes = [];
-        try { routes = await api('/cities'); } catch(e) {}
-        const routeList = Array.isArray(routes) ? routes : (routes.cities || routes.data || []);
+        let cities = [];
+        try { cities = await api('/cities'); } catch(e) {}
+        const cityList = Array.isArray(cities) ? cities : (cities.cities || cities.data || []);
         
         el.innerHTML = `
-          <h2 class="page-title">Маршрути і тарифи</h2>
+          <h2 class="page-title">Маршрути і тарифи (Міста)</h2>
           <div class="panel" style="max-width: 100%;">
             <table>
-              <tr><th>Сирий об'єкт з бази даних (для перевірки полів)</th></tr>
-              ${routeList.map(r => `<tr><td>${JSON.stringify(r)}</td></tr>`).join('')}
+              <tr><th>ID</th><th>Назва міста</th></tr>
+              ${cityList.map(c => `
+                <tr>
+                  <td>${c.id}</td>
+                  <td>${c.name}</td>
+                </tr>
+              `).join('')}
             </table>
           </div>`;
       },
