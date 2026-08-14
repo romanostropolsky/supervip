@@ -11,7 +11,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
 // ==========================================
-// МАРШРУТИ API (Усі модулі з папки src/routes)
+// МАРШРУТИ API (Усі ваші роути)
 // ==========================================
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/cities', require('./routes/cities'));
@@ -23,21 +23,20 @@ app.use('/api/orders', require('./routes/orders'));
 app.use('/api/reports', require('./routes/reports'));
 
 // ==========================================
-// ЗАПУСК TELEGRAM БОТА (Слухач кнопок)
+// ЗАПУСК TELEGRAM БОТА (Обробка кнопок)
 // ==========================================
 try {
-  const botModule = require('./telegramBot');
-  
-  // Якщо модуль експортує безпосередньо об'єкт бота Telegraf
-  if (botModule && typeof botModule.launch === 'function') {
-    botModule.launch()
-      .then(() => console.log('🤖 Telegram бот успішно запущений і слухає кнопки!'))
-      .catch((err) => console.error('❌ Помилка запуску бота:', err.message));
+  const { bot, botEnabled } = require('./telegramBot');
+
+  if (botEnabled && bot) {
+    bot.launch()
+      .then(() => console.log('🤖 Telegram бот успішно запущено! Обробка кнопок працює.'))
+      .catch((err) => console.error('❌ Помилка запуску Telegram бота:', err.message));
   } else {
-    console.log('🤖 Telegram бот підключений');
+    console.log('⚠️ TELEGRAM_BOT_TOKEN не вказано у Render Environment, бот вимкнений.');
   }
 } catch (err) {
-  console.log('⚠️ Помилка завантаження telegramBot.js:', err.message);
+  console.error('⚠️ Помилка ініціалізації telegramBot.js:', err.message);
 }
 
 // Головна сторінка (SPA fallback)
@@ -46,7 +45,7 @@ app.get('*', (req, res) => {
 });
 
 // ==========================================
-// БЛОК ЗАПУСКУ СЕРВЕРА ТА ОБРОБКИ ПОМИЛОК
+// БЛОК ЗАПУСКУ СЕРВЕРА
 // ==========================================
 const PORT = process.env.PORT || 3000;
 
@@ -55,9 +54,9 @@ app.listen(PORT, () => {
 });
 
 process.on('uncaughtException', (err) => {
-  console.error('❌ КРИТИЧНА ПОМИЛКА (uncaughtException):', err);
+  console.error('❌ ПОМИЛКА (uncaughtException):', err);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ НЕОБРОБЛЕНИЙ PROMISE (unhandledRejection):', reason);
+  console.error('❌ ПОМИЛКА (unhandledRejection):', reason);
 });
