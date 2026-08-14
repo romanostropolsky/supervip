@@ -27,6 +27,11 @@ function stageLabel(route, stage) {
 function formatOrderMessage(order, route, carType) {
   const lines = [
     `🚕 Нове замовлення №${order.id}`,
+    `👤 Пасажир: ${order.passenger_name || 'Не вказано'}`,
+    `📞 Телефон: ${order.passenger_phone || 'Не вказано'}`,
+    `⏰ Час подачі: ${order.pickup_time || 'Не вказано'}`,
+    `🏁 Час приїзду: ${order.arrival_time || 'Не вказано'}`,
+    ``,
     `Маршрут: ${route.start_city} → ${route.end_city}`,
     `Клас авто: ${carType.name}`,
     `Пасажирів: ${order.passengers}`,
