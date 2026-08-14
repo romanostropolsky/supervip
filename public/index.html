@@ -15,31 +15,30 @@
       --border: #2e3545;
       --ok: #10b981;
       --bad: #ef4444;
-      --mono: monospace;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
-    body { background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
-    aside { width: 240px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; height: 100vh; }
+    body { background: var(--bg); color: var(--text); display: flex; width: 100vw; height: 100vh; overflow: hidden; }
+    aside { width: 240px; min-width: 240px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; height: 100vh; z-index: 10; }
     .logo { padding: 20px; font-weight: bold; font-size: 16px; color: var(--accent); letter-spacing: 1px; border-bottom: 1px solid var(--border); }
     .menu { padding: 10px; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; flex: 1; }
-    .menu-item { padding: 10px 14px; border-radius: 6px; cursor: pointer; color: var(--muted); font-size: 14px; transition: 0.2s; }
+    .menu-item { padding: 10px 14px; border-radius: 6px; cursor: pointer; color: var(--muted); font-size: 14px; transition: 0.2s; user-select: none; }
     .menu-item:hover, .menu-item.active { background: var(--panel-2); color: var(--text); }
-    main { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow-y: auto; }
-    header { height: 60px; min-height: 60px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: flex-end; padding: 0 20px; gap: 20px; background: var(--panel); }
+    main { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow-y: auto; position: relative; }
+    header { height: 60px; min-height: 60px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: flex-end; padding: 0 20px; gap: 20px; background: var(--panel); width: 100%; }
     .top-stat { font-size: 13px; color: var(--muted); }
     .top-stat span { color: var(--accent); font-weight: bold; }
-    .content { padding: 20px; flex: 1; padding-bottom: 50px; }
-    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px; max-width: 900px; margin-bottom: 20px; }
+    .content { padding: 20px; width: 100%; max-width: 1000px; }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 20px; }
     .page-title { font-size: 20px; margin-bottom: 20px; font-weight: 600; }
     .form-group { margin-bottom: 15px; }
     label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; }
-    input, select { width: 100%; padding: 10px; background: var(--panel-2); border: 1px solid var(--border); color: var(--text); border-radius: 6px; font-size: 14px; }
+    input, select { width: 100%; padding: 10px; background: var(--panel-2); border: 1px solid var(--border); color: var(--text); border-radius: 6px; font-size: 14px; outline: none; }
     button { background: var(--accent); color: #000; border: none; padding: 12px 20px; font-weight: bold; border-radius: 6px; cursor: pointer; transition: 0.2s; width: 100%; margin-top: 10px; }
     button:hover { background: var(--accent-hover); }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 14px; }
     th { color: var(--muted); font-size: 11px; text-transform: uppercase; }
-    .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+    .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; display: inline-block; }
     .badge.new { background: #3b82f6; color: #fff; }
     .badge.sent { background: #f59e0b; color: #000; }
     .badge.completed { background: #10b981; color: #fff; }
@@ -70,19 +69,25 @@
 
   <script>
     async function api(url, method = 'GET', data = null) {
-      const opts = { method, headers: { 'Content-Type': 'application/json' } };
-      if (data) opts.body = JSON.stringify(data);
-      const res = await fetch('/api' + url, opts);
-      return res.json();
+      try {
+        const opts = { method, headers: { 'Content-Type': 'application/json' } };
+        if (data) opts.body = JSON.stringify(data);
+        const res = await fetch('/api' + url, opts);
+        return await res.json();
+      } catch (e) {
+        return {};
+      }
     }
 
     async function loadStats() {
-      try {
-        const drivers = await api('/drivers');
+      const drivers = await api('/drivers');
+      if (Array.isArray(drivers)) {
         document.getElementById('onlineDriversCount').innerText = drivers.filter(d => d.status === 'online').length;
-        const orders = await api('/orders');
+      }
+      const orders = await api('/orders');
+      if (Array.isArray(orders)) {
         document.getElementById('activeOrdersCount').innerText = orders.filter(o => o.status === 'new' || o.status === 'sent').length;
-      } catch(e) {}
+      }
     }
 
     function getCities() {
@@ -140,7 +145,7 @@
               <div class="form-group">
                 <label>Клас авто</label>
                 <select id="carTypeId">
-                  ${config.carTypes ? config.carTypes.map(c => `<option value="${c.id}">${c.name}</option>`).join('') : ''}
+                  ${config && config.carTypes ? config.carTypes.map(c => `<option value="${c.id}">${c.name}</option>`).join('') : '<option value="1">Седан</option>'}
                 </select>
               </div>
               <div class="form-group">
@@ -159,10 +164,10 @@
                 <label>Призначити водія (необов'язково)</label>
                 <select id="driverId">
                   <option value="">-- Автоматично або без водія --</option>
-                  ${drivers.filter(d => d.status === 'online').map(d => `<option value="${d.id}">${d.name}</option>`).join('')}
+                  ${Array.isArray(drivers) ? drivers.filter(d => d.status === 'online').map(d => `<option value="${d.id}">${d.name}</option>`).join('') : ''}
                 </select>
               </div>
-              <button type="submit">Створити замовлення</button>
+              <button type="submit" id="submitOrderBtn">Створити замовлення</button>
             </form>
           </div>`;
 
@@ -193,7 +198,7 @@
             routeDescription: `${from} → ${to}`
           };
           const res = await api('/orders', 'POST', data);
-          if (res.error) alert(res.error);
+          if (res && res.error) alert(res.error);
           else {
             alert('Замовлення успішно створено!');
             switchPage('orders');
@@ -204,10 +209,10 @@
         const orders = await api('/orders');
         el.innerHTML = `
           <h2 class="page-title">Замовлення</h2>
-          <div class="panel" style="max-width: 100%;">
+          <div class="panel">
             <table>
               <tr><th>ID</th><th>Пасажир</th><th>Телефон</th><th>Час подачі</th><th>Статус</th></tr>
-              ${orders.map(o => `
+              ${Array.isArray(orders) ? orders.map(o => `
                 <tr>
                   <td>#${o.id}</td>
                   <td>${o.passenger_name || '—'}</td>
@@ -215,7 +220,7 @@
                   <td>${o.pickup_time ? o.pickup_time.replace('T', ' ') : '—'}</td>
                   <td><span class="badge ${o.status}">${o.status}</span></td>
                 </tr>
-              `).join('')}
+              `).join('') : ''}
             </table>
           </div>`;
       },
@@ -223,16 +228,16 @@
         const drivers = await api('/drivers');
         el.innerHTML = `
           <h2 class="page-title">Водії</h2>
-          <div class="panel" style="max-width: 100%;">
+          <div class="panel">
             <table>
               <tr><th>Ім'я</th><th>Телефон</th><th>Статус</th></tr>
-              ${drivers.map(d => `
+              ${Array.isArray(drivers) ? drivers.map(d => `
                 <tr>
                   <td>${d.name}</td>
                   <td>${d.phone || '—'}</td>
                   <td><span class="badge ${d.status === 'online' ? 'completed' : 'cancelled'}">${d.status}</span></td>
                 </tr>
-              `).join('')}
+              `).join('') : ''}
             </table>
           </div>`;
       },
@@ -265,7 +270,7 @@
             </form>
           </div>
 
-          <div class="panel" style="max-width: 100%;">
+          <div class="panel">
             <h3 style="font-size: 14px; margin-bottom: 10px; color: var(--accent);">Список тарифів</h3>
             <table>
               <tr><th>Звідки</th><th>Куди</th><th>Ціна</th><th>Дії</th></tr>
@@ -274,7 +279,7 @@
                   <td>${t.from}</td>
                   <td>${t.to}</td>
                   <td><b>${t.price} грн</b></td>
-                  <td><button onclick="window.deleteTariff(${index})" style="background:var(--bad); color:#fff; padding:6px 12px; font-size:12px; width:auto; margin-top:0;">Видалити</button></td>
+                  <td><button type="button" onclick="window.deleteTariff(${index})" style="background:var(--bad); color:#fff; padding:6px 12px; font-size:12px; width:auto; margin-top:0;">Видалити</button></td>
                 </tr>
               `).join('')}
             </table>
@@ -337,7 +342,7 @@
             telegram_id: document.getElementById('driverTgId').value || null
           };
           const res = await api('/drivers', 'POST', data);
-          if (res.error) alert(res.error);
+          if (res && res.error) alert(res.error);
           else {
             alert('Водія успішно зареєстровано!');
             switchPage('drivers');
@@ -346,12 +351,16 @@
       },
       'reports': async (el) => {
         const orders = await api('/orders');
+        const total = Array.isArray(orders) ? orders.length : 0;
+        const completed = Array.isArray(orders) ? orders.filter(o => o.status === 'completed').length : 0;
+        const cancelled = Array.isArray(orders) ? orders.filter(o => o.status === 'cancelled').length : 0;
+
         el.innerHTML = `
           <h2 class="page-title">Звіт</h2>
           <div class="panel">
-            <div style="font-size: 18px; margin-bottom: 10px;">Усього замовлень: <b>${orders.length}</b></div>
-            <div style="font-size: 16px; color: var(--ok);">Завершено: <b>${orders.filter(o => o.status === 'completed').length}</b></div>
-            <div style="font-size: 16px; color: var(--bad); margin-top: 5px;">Скасовано: <b>${orders.filter(o => o.status === 'cancelled').length}</b></div>
+            <div style="font-size: 18px; margin-bottom: 10px;">Усього замовлень: <b>${total}</b></div>
+            <div style="font-size: 16px; color: var(--ok);">Завершено: <b>${completed}</b></div>
+            <div style="font-size: 16px; color: var(--bad); margin-top: 5px;">Скасовано: <b>${cancelled}</b></div>
           </div>`;
       },
       'dispatchers': async (el) => {
@@ -371,7 +380,7 @@
             </form>
           </div>`;
 
-        document.getElementById('dispatcherForm').onsubmit = async (e) => {
+        document.getElementById('dispatcherForm').onsubmit = (e) => {
           e.preventDefault();
           alert('Диспетчера успішно збережено!');
           document.getElementById('dispatcherForm').reset();
