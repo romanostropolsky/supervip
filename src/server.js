@@ -33,13 +33,19 @@ const PORT = process.env.PORT || 3000;
 
 async function main() {
   await initSchema();
+
+  // Порт відкриваємо ОДРАЗУ, незалежно від стану Telegram-бота.
+  // Якщо бот "зависне" (мережа, конфлікт іншого запущеного інстансу з тим самим
+  // токеном — 409 Conflict від Telegram), це більше не блокує весь сервер.
+  app.listen(PORT, () => console.log(`Сервер запущено на порті ${PORT}`));
+
   if (botEnabled) {
-    await bot.launch();
-    console.log('Telegram-бот запущено');
+    bot.launch()
+      .then(() => console.log('Telegram-бот запущено'))
+      .catch((e) => console.error('⚠ Telegram-бот не запустився:', e.message));
   } else {
     console.log('⚠ TELEGRAM_BOT_TOKEN не задано — сповіщення водіям вимкнені, панель диспетчера працює як звичайно.');
   }
-  app.listen(PORT, () => console.log(`Сервер запущено на порті ${PORT}`));
 }
 
 main().catch((e) => {
