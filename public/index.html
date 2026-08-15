@@ -76,7 +76,7 @@ const API = '/api';
 let token = localStorage.getItem('token') || null;
 let role = localStorage.getItem('role') || null;
 let busy = {};
-let state = { tab:'new_order', drivers:[], orders:[], cities:[], dispatchers:[], toast:null, editingOrderId:null, loaded:false };
+let state = { tab:'orders', drivers:[], orders:[], cities:[], dispatchers:[], toast:null, editingOrderId:null, loaded:false };
 
 function authHeaders(){ return token ? { 'Authorization': 'Bearer '+token } : {}; }
 async function api(path, opts={}){
@@ -168,7 +168,7 @@ async function doLogin(){
 }
 
 /* ===================== SIDEBAR / TABS ===================== */
-const BASE_TABS = [['new_order','Нове замовлення'],['orders','Замовлення'],['drivers','Водії'],['register','Реєстрація водія'],['cities','Міста'],['reports','Звіт']];
+const BASE_TABS = [['orders','Замовлення'],['drivers','Водії'],['cities','Міста'],['reports','Звіт']];
 function currentTabs(){ return role==='admin' ? [...BASE_TABS, ['dispatchers','Диспетчери']] : BASE_TABS; }
 function renderSidebar(){
   document.getElementById('sidebar').innerHTML = currentTabs().map(([k,l])=>`<button class="${state.tab===k?'active':''}" onclick="setTab('${k}')">${l}</button>`).join('');
@@ -176,10 +176,8 @@ function renderSidebar(){
 function setTab(t){ state.tab=t; state.editingOrderId=null; render(); }
 function renderMain(){
   const main = document.getElementById('main');
-  if(state.tab==='new_order') return renderNewOrder(main);
   if(state.tab==='orders') return renderOrders(main);
   if(state.tab==='drivers') return renderDrivers(main);
-  if(state.tab==='register') return renderRegister(main);
   if(state.tab==='cities') return renderCities(main);
   if(state.tab==='reports') return renderReports(main);
   if(state.tab==='dispatchers') return renderDispatchers(main);
@@ -211,13 +209,16 @@ function collectStops(containerId){
   return stops;
 }
 
-/* ===================== NEW ORDER ===================== */
-function renderNewOrder(main){
+/* ===================== ORDERS (форма створення + список) ===================== */
+function renderOrders(main){
   const eligible = state.drivers.filter(d=>d.status==='online' && !d.current_order_id && d.telegram_chat_id);
+  const orders = [...state.orders].sort((a,b)=> new Date(b.created_at)-new Date(a.created_at));
   main.innerHTML = `
-    <h2 class="page-title">Нове замовлення</h2>
-    <p class="page-sub">Ціну й комісію вказуєте вручну — маршрут тепер довільний.</p>
+    <h2 class="page-title">Замовлення</h2>
+
     <div class="panel">
+      <h3>Нове замовлення</h3>
+      <p class="page-sub">Ціну й комісію вказуєте вручну — маршрут довільний.</p>
       <div class="row">
         <div><label>Клієнт (ПІБ / телефон)</label><input type="text" id="f_client"></div>
         <div><label>Кількість пасажирів</label><input type="number" id="f_pax" min="1" max="20" value="1"></div>
@@ -239,39 +240,12 @@ function renderNewOrder(main){
       <div id="f_stops"></div>
       <button class="btn secondary small" onclick="addStopRow('f','f_stops')">+ Додати точку</button>
       <div><button class="btn" onclick="submitOrder()">Створити замовлення</button></div>
-    </div>`;
-  document.getElementById('f_stops').innerHTML='';
-  addStopRow('f','f_stops');
-  addStopRow('f','f_stops');
-}
-async function submitOrder(){
-  if(busy.order) return;
-  busy.order = true;
-  const client = document.getElementById('f_client').value.trim();
-  const passengers = parseInt(document.getElementById('f_pax').value)||1;
-  const departureTime = document.getElementById('f_time').value || null;
-  const price = parseFloat(document.getElementById('f_price').value)||0;
-  const commission = parseFloat(document.getElementById('f_commission').value)||0;
-  const driverId = document.getElementById('f_driver').value || null;
-  const stops = collectStops('f_stops');
-  if(!client){ showToast('Вкажіть клієнта'); busy.order=false; return; }
-  if(stops.length<2){ showToast('Додайте мінімум 2 точки маршруту'); busy.order=false; return; }
-  try{
-    const order = await api('/orders', {method:'POST', body:{client,passengers,departureTime,stops,price,commission,driverId}});
-    showToast(order.warning || 'Замовлення створено' + (driverId && !order.warning ? ' і надіслано водію в Telegram' : ''));
-    state.orders = await api('/orders'); state.drivers = await api('/drivers');
-    state.tab='orders'; render();
-  }catch(e){ showToast(e.message); }
-  finally{ busy.order = false; }
-}
+    </div>
 
-/* ===================== ORDERS ===================== */
-function renderOrders(main){
-  const orders = [...state.orders].sort((a,b)=> new Date(b.created_at)-new Date(a.created_at));
-  main.innerHTML = `
-    <h2 class="page-title">Замовлення</h2>
     <div id="editBox"></div>
+
     <div class="panel">
+      <h3>Усі замовлення (${orders.length})</h3>
       ${orders.length===0?'<div class="empty">Замовлень ще немає</div>':`
       <table><tr><th>Клієнт</th><th>Пас.</th><th>Подача</th><th>Маршрут</th><th>Ціна</th><th>Комісія</th><th>Водій</th><th>Статус</th><th>Етап</th><th></th></tr>
       ${orders.map(o=>{
@@ -290,7 +264,30 @@ function renderOrders(main){
         </tr>`;
       }).join('')}</table>`}
     </div>`;
+  document.getElementById('f_stops').innerHTML='';
+  addStopRow('f','f_stops');
+  addStopRow('f','f_stops');
   if(state.editingOrderId) renderEditOrder();
+}
+async function submitOrder(){
+  if(busy.order) return;
+  busy.order = true;
+  const client = document.getElementById('f_client').value.trim();
+  const passengers = parseInt(document.getElementById('f_pax').value)||1;
+  const departureTime = document.getElementById('f_time').value || null;
+  const price = parseFloat(document.getElementById('f_price').value)||0;
+  const commission = parseFloat(document.getElementById('f_commission').value)||0;
+  const driverId = document.getElementById('f_driver').value || null;
+  const stops = collectStops('f_stops');
+  if(!client){ showToast('Вкажіть клієнта'); busy.order=false; return; }
+  if(stops.length<2){ showToast('Додайте мінімум 2 точки маршруту'); busy.order=false; return; }
+  try{
+    const order = await api('/orders', {method:'POST', body:{client,passengers,departureTime,stops,price,commission,driverId}});
+    showToast(order.warning || 'Замовлення створено' + (driverId && !order.warning ? ' і надіслано водію в Telegram' : ''));
+    state.orders = await api('/orders'); state.drivers = await api('/drivers');
+    render();
+  }catch(e){ showToast(e.message); }
+  finally{ busy.order = false; }
 }
 function assignSelect(order){
   const eligible = state.drivers.filter(d=>d.status==='online' && !d.current_order_id && d.telegram_chat_id);
@@ -367,40 +364,10 @@ function formatDriverLocation(d){
 function renderDrivers(main){
   main.innerHTML = `
     <h2 class="page-title">Водії</h2>
-    <p class="page-sub">Статус можна перемикати вручну — корисно, якщо водій недоступний по телефону чи Telegram.</p>
-    <div class="panel">
-      ${state.drivers.length===0?'<div class="empty">Водіїв ще не зареєстровано</div>':`
-      <table><tr><th>Ім'я</th><th>Телефон</th><th>Авто</th><th>Клас</th><th>Місць</th><th>Ставка</th><th>Telegram</th><th>Статус</th><th>Замовлення</th><th>Локація</th><th></th></tr>
-      ${state.drivers.map(d=>{
-        const order = state.orders.find(o=>o.id===d.current_order_id);
-        return `<tr><td>${d.name}</td><td class="mono">${d.phone||'—'}</td><td>${d.car_model||'—'}</td>
-        <td><span class="badge-class">${d.car_class}</span></td><td>${d.seats}</td><td class="mono">${d.tariff_rate||0}</td>
-        <td>${d.telegram_chat_id?'✅':'⏳'}</td>
-        <td><span class="status-dot ${d.status}"></span>${d.status==='online'?'Онлайн':'Офлайн'}</td>
-        <td>${order?`<span class="chip ${order.status}">${STATUS_LABELS[order.status]}</span>`:'—'}</td>
-        <td>${formatDriverLocation(d)}</td>
-        <td><button class="btn ${d.status==='online'?'danger':'ok'} small" onclick="toggleDriverStatusManual(${d.id},'${d.status==='online'?'offline':'online'}')">${d.status==='online'?'Вимкнути':'Увімкнути'}</button></td>
-        </tr>`;
-      }).join('')}</table>`}
-    </div>`;
-}
-async function toggleDriverStatusManual(id, newStatus){
-  if(busy['drv_'+id]) return;
-  busy['drv_'+id] = true;
-  try{
-    await api(`/drivers/${id}/status`, {method:'PUT', body:{status:newStatus}});
-    state.drivers = await api('/drivers');
-    render();
-  }catch(e){ showToast(e.message); }
-  finally{ busy['drv_'+id] = false; }
-}
+    <p class="page-sub">Реєстрація нових водіїв і керування наявними — статус, локація, підключення до Telegram.</p>
 
-/* ===================== REGISTER DRIVER ===================== */
-function renderRegister(main){
-  main.innerHTML = `
-    <h2 class="page-title">Реєстрація водія</h2>
-    <p class="page-sub">Після реєстрації водій має надіслати боту команду /start з кодом прив'язки.</p>
     <div class="panel">
+      <h3>Реєстрація водія</h3>
       <div class="row">
         <div><label>Ім'я</label><input type="text" id="rd_name"></div>
         <div><label>Телефон</label><input type="tel" id="rd_phone"></div>
@@ -418,14 +385,39 @@ function renderRegister(main){
       </div>
       <button class="btn" onclick="registerDriver()">Зареєструвати водія</button>
     </div>
-    <div class="panel"><h3>Зареєстровані водії (${state.drivers.length})</h3>
-      ${state.drivers.length===0?'<div class="empty">Поки немає водіїв</div>':`
-      <table><tr><th>Ім'я</th><th>Телефон</th><th>Клас</th><th>Код / Telegram</th><th></th></tr>
-      ${state.drivers.map(d=>`<tr><td>${d.name}</td><td class="mono">${d.phone||'—'}</td><td>${d.car_class}</td>
+
+    <div class="panel">
+      <h3>Усі водії (${state.drivers.length})</h3>
+      <p class="page-sub">Статус можна перемикати вручну — корисно, якщо водій недоступний по телефону чи Telegram.</p>
+      ${state.drivers.length===0?'<div class="empty">Водіїв ще не зареєстровано</div>':`
+      <table><tr><th>Ім'я</th><th>Телефон</th><th>Авто</th><th>Клас</th><th>Місць</th><th>Ставка</th><th>Telegram</th><th>Статус</th><th>Замовлення</th><th>Локація</th><th></th></tr>
+      ${state.drivers.map(d=>{
+        const order = state.orders.find(o=>o.id===d.current_order_id);
+        return `<tr><td>${d.name}</td><td class="mono">${d.phone||'—'}</td><td>${d.car_model||'—'}</td>
+        <td><span class="badge-class">${d.car_class}</span></td><td>${d.seats}</td><td class="mono">${d.tariff_rate||0}</td>
         <td>${d.telegram_chat_id?'✅ підключено':`<div class="code-box">/start ${d.link_code}</div>`}</td>
-        <td><button class="btn danger small" onclick="removeDriver(${d.id})">Видалити</button></td></tr>`).join('')}</table>`}
+        <td><span class="status-dot ${d.status}"></span>${d.status==='online'?'Онлайн':'Офлайн'}</td>
+        <td>${order?`<span class="chip ${order.status}">${STATUS_LABELS[order.status]}</span>`:'—'}</td>
+        <td>${formatDriverLocation(d)}</td>
+        <td style="white-space:nowrap">
+          <button class="btn ${d.status==='online'?'danger':'ok'} small" onclick="toggleDriverStatusManual(${d.id},'${d.status==='online'?'offline':'online'}')">${d.status==='online'?'Вимкнути':'Увімкнути'}</button>
+          <button class="btn danger small" onclick="removeDriver(${d.id})">Видалити</button>
+        </td>
+        </tr>`;
+      }).join('')}</table>`}
     </div>`;
 }
+async function toggleDriverStatusManual(id, newStatus){
+  if(busy['drv_'+id]) return;
+  busy['drv_'+id] = true;
+  try{
+    await api(`/drivers/${id}/status`, {method:'PUT', body:{status:newStatus}});
+    state.drivers = await api('/drivers');
+    render();
+  }catch(e){ showToast(e.message); }
+  finally{ busy['drv_'+id] = false; }
+}
+
 async function registerDriver(){
   if(busy.driver) return;
   busy.driver = true;
