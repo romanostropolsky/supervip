@@ -11,7 +11,7 @@
     --info:#4f9df7; --info-dim:#17263a; --mono:"SF Mono","Consolas","Roboto Mono",monospace; --sans:-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
   }
   *{box-sizing:border-box;}
-  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);overflow-x:hidden;}
   .top{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:var(--panel);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20;}
   .brand{display:flex;align-items:center;gap:10px;}
   .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);}
@@ -65,7 +65,26 @@
   .stop-badge{background:var(--panel-2);padding:2px 8px;border-radius:5px;border:1px solid var(--border);}
   .stop-arrow{color:var(--accent);}
   .badge-class{padding:3px 8px;border-radius:4px;font-weight:700;font-size:11px;background:var(--panel-2);border:1px solid var(--border);}
-  @media (max-width:800px){.body-row{flex-direction:column;} .sidebar{width:100%;display:flex;flex-wrap:wrap;gap:4px;} .main{padding:16px;}}
+  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  @media (max-width:800px){
+    .body-row{flex-direction:column;}
+    .sidebar{
+      width:100%;display:flex;flex-wrap:nowrap;flex-direction:row;overflow-x:auto;gap:6px;
+      padding:10px 12px;-webkit-overflow-scrolling:touch;border-right:none;border-bottom:1px solid var(--border);
+    }
+    .sidebar button{width:auto;flex-shrink:0;white-space:nowrap;padding:9px 14px;margin-bottom:0;}
+    .main{padding:14px;max-width:100%;}
+    .panel{padding:14px;}
+    .stat-strip{gap:8px;}
+    .stat-box{min-width:110px;padding:10px 12px;}
+  }
+  @media (max-width:800px) and (orientation:landscape){
+    .main{padding:8px 14px;}
+    .panel{padding:10px 14px;margin-bottom:12px;}
+    table{font-size:11px;}
+    th,td{padding:5px 6px;}
+    .sidebar button{padding:7px 12px;font-size:12.5px;}
+  }
 </style>
 </head>
 <body>
@@ -247,6 +266,7 @@ function renderOrders(main){
     <div class="panel">
       <h3>Усі замовлення (${orders.length})</h3>
       ${orders.length===0?'<div class="empty">Замовлень ще немає</div>':`
+      <div class="table-wrap">
       <table><tr><th>Клієнт</th><th>Пас.</th><th>Подача</th><th>Маршрут</th><th>Ціна</th><th>Комісія</th><th>Водій</th><th>Статус</th><th>Етап</th><th></th></tr>
       ${orders.map(o=>{
         const drv = state.drivers.find(d=>d.id===o.driver_id);
@@ -262,7 +282,8 @@ function renderOrders(main){
             ${o.status!=='completed'&&o.status!=='cancelled'?`<button class="btn danger small" onclick="cancelOrder(${o.id})">Скасувати</button>`:''}
           </td>
         </tr>`;
-      }).join('')}</table>`}
+      }).join('')}</table>
+      </div>`}
     </div>`;
   document.getElementById('f_stops').innerHTML='';
   addStopRow('f','f_stops');
@@ -390,6 +411,7 @@ function renderDrivers(main){
       <h3>Усі водії (${state.drivers.length})</h3>
       <p class="page-sub">Статус можна перемикати вручну — корисно, якщо водій недоступний по телефону чи Telegram.</p>
       ${state.drivers.length===0?'<div class="empty">Водіїв ще не зареєстровано</div>':`
+      <div class="table-wrap">
       <table><tr><th>Ім'я</th><th>Телефон</th><th>Авто</th><th>Клас</th><th>Місць</th><th>Ставка</th><th>Telegram</th><th>Статус</th><th>Замовлення</th><th>Локація</th><th></th></tr>
       ${state.drivers.map(d=>{
         const order = state.orders.find(o=>o.id===d.current_order_id);
@@ -404,7 +426,8 @@ function renderDrivers(main){
           <button class="btn danger small" onclick="removeDriver(${d.id})">Видалити</button>
         </td>
         </tr>`;
-      }).join('')}</table>`}
+      }).join('')}</table>
+      </div>`}
     </div>`;
 }
 async function toggleDriverStatusManual(id, newStatus){

@@ -36,6 +36,14 @@ async function getCities() {
   const { rows } = await pool.query('SELECT name FROM cities ORDER BY name');
   return rows.map(r => r.name);
 }
+// Автоматично оновлює локацію водія на місто, у якому він щойно відмітив етап поїздки
+async function setDriverLocationCity(driverId, city) {
+  if (!driverId || !city) return;
+  await pool.query(
+    `UPDATE drivers SET current_city=$1, current_lat=NULL, current_lng=NULL, location_updated_at=now() WHERE id=$2`,
+    [city, driverId]
+  );
+}
 function citiesInlineKeyboard(cities) {
   const rows = [];
   for (let i = 0; i < cities.length; i += 2) {
@@ -144,6 +152,7 @@ bot.action(/advance_(\d+)/, async (ctx) => {
   if (order.status === 'confirmed') {
     const idx = 0;
     await pool.query("UPDATE orders SET status='in_progress', stage=$1, updated_at=now() WHERE id=$2", [idx, orderId]);
+    await setDriverLocationCity(order.driver_id, stops[idx].city);
     const nextIdx = idx + 1;
     if (nextIdx < stops.length) {
       const label = nextIdx === stops.length - 1 ? 'Завершити поїздку' : `Далі: ${stops[nextIdx].city}`;
@@ -153,6 +162,7 @@ bot.action(/advance_(\d+)/, async (ctx) => {
     const nextIdx = order.stage + 1;
     const isLast = nextIdx === stops.length - 1;
     await pool.query("UPDATE orders SET stage=$1, updated_at=now() WHERE id=$2", [nextIdx, orderId]);
+    await setDriverLocationCity(order.driver_id, stops[nextIdx].city);
     if (isLast) {
       await pool.query("UPDATE orders SET status='completed', updated_at=now() WHERE id=$1", [orderId]);
       await pool.query('UPDATE drivers SET current_order_id=NULL WHERE id=$1', [order.driver_id]);
