@@ -70,7 +70,7 @@ router.put('/:id', async (req, res) => {
       client || order.client,
       passengers || order.passengers,
       departureTime !== undefined ? (departureTime || null) : order.departure_time,
-      stops && stops.length >= 2 ? JSON.stringify(stops) : order.stops,
+      stops && stops.length >= 2 ? JSON.stringify(stops) : JSON.stringify(order.stops),
       price !== undefined ? price : order.price,
       commission !== undefined ? commission : order.commission,
       orderId,

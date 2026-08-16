@@ -39,6 +39,25 @@ router.post('/:id/geocode', async (req, res) => {
   res.json(updated.rows[0]);
 });
 
+// Масове визначення координат для всіх міст, яким їх ще не визначено
+// (наприклад, доданих до появи цієї функції)
+router.post('/geocode-all', async (req, res) => {
+  const cities = (await pool.query('SELECT * FROM cities WHERE lat IS NULL OR lng IS NULL')).rows;
+  const results = { total: cities.length, success: 0, failed: [] };
+  for (const city of cities) {
+    const coords = await geocodeCity(city.name);
+    if (coords) {
+      await pool.query('UPDATE cities SET lat=$1, lng=$2 WHERE id=$3', [coords.lat, coords.lng, city.id]);
+      results.success++;
+    } else {
+      results.failed.push(city.name);
+    }
+    // Nominatim просить не частіше 1 запиту/сек
+    await new Promise(r => setTimeout(r, 1100));
+  }
+  res.json(results);
+});
+
 router.delete('/:id', async (req, res) => {
   await pool.query('DELETE FROM cities WHERE id=$1', [req.params.id]);
   res.json({ ok: true });

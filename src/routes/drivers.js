@@ -4,7 +4,14 @@ const { pool } = require('../db');
 const router = express.Router();
 
 router.get('/', async (req, res) => {
-  const { rows } = await pool.query('SELECT * FROM drivers ORDER BY id');
+  const { rows } = await pool.query(`
+    SELECT d.*, COALESCE(oc.trips, 0) AS completed_trips
+    FROM drivers d
+    LEFT JOIN (
+      SELECT driver_id, COUNT(*) AS trips FROM orders WHERE status='completed' GROUP BY driver_id
+    ) oc ON oc.driver_id = d.id
+    ORDER BY d.id
+  `);
   res.json(rows);
 });
 

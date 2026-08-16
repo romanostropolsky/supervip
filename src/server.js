@@ -12,6 +12,7 @@ const orderRoutes = require('./routes/orders');
 const reportRoutes = require('./routes/reports');
 const dispatcherRoutes = require('./routes/dispatchers');
 const cityRoutes = require('./routes/cities');
+const routeTemplateRoutes = require('./routes/routeTemplates');
 
 const app = express();
 app.use(cors());
@@ -23,6 +24,7 @@ app.use('/api/orders', requireAuth, orderRoutes);
 app.use('/api/reports', requireAuth, reportRoutes);
 app.use('/api/dispatchers', requireAuth, requireAdmin, dispatcherRoutes);
 app.use('/api/cities', requireAuth, cityRoutes);
+app.use('/api/routes', requireAuth, routeTemplateRoutes);
 
 app.use(express.static(path.join(__dirname, '..', 'public')));
 app.get('*', (req, res) => {
