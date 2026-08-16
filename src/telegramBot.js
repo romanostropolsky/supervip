@@ -1,6 +1,7 @@
 const { Telegraf, Markup } = require('telegraf');
 const { pool } = require('./db');
 const { stageLabel, formatOrderMessage } = require('./orderLogic');
+const { findNearestCity } = require('./geocode');
 
 const botToken = process.env.TELEGRAM_BOT_TOKEN;
 const botEnabled = !!botToken;
@@ -105,11 +106,18 @@ bot.hears('⬅ Назад до меню', async (ctx) => { await ctx.reply('Го
 
 bot.on('location', async (ctx) => {
   const { latitude, longitude } = ctx.message.location;
+  const cities = (await pool.query('SELECT name, lat, lng FROM cities WHERE lat IS NOT NULL AND lng IS NOT NULL')).rows;
+  const nearest = findNearestCity(cities, latitude, longitude);
+
   await pool.query(
-    `UPDATE drivers SET current_lat=$1, current_lng=$2, current_city=NULL, location_updated_at=now() WHERE telegram_chat_id=$3`,
-    [latitude, longitude, String(ctx.chat.id)]
+    `UPDATE drivers SET current_lat=$1, current_lng=$2, current_city=$3, location_updated_at=now() WHERE telegram_chat_id=$4`,
+    [latitude, longitude, nearest ? nearest.city : null, String(ctx.chat.id)]
   );
-  await ctx.reply('📍 Локацію (GPS) оновлено. Диспетчер бачить її в панелі.', mainKeyboard());
+
+  const msg = nearest
+    ? `📍 Локацію оновлено: найближче місто — ${nearest.city} (~${nearest.distanceKm} км).`
+    : '📍 Локацію (GPS) оновлено. Диспетчер бачить точку на карті.';
+  await ctx.reply(msg, mainKeyboard());
 });
 bot.action(/^city_(.+)$/, async (ctx) => {
   const city = ctx.match[1];

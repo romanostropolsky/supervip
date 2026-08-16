@@ -243,7 +243,6 @@ function renderOrders(main){
         <div><label>Кількість пасажирів</label><input type="number" id="f_pax" min="1" max="20" value="1"></div>
       </div>
       <div class="row">
-        <div><label>Дата й час подачі</label><input type="datetime-local" id="f_time"></div>
         <div><label>Водій (онлайн, підключений до бота)</label>
           <select id="f_driver"><option value="">— призначити пізніше —</option>${eligible.map(d=>{
             const loc = d.current_city ? ` — 📍${d.current_city}` : (d.current_lat?' — 📡GPS':'');
@@ -267,11 +266,11 @@ function renderOrders(main){
       <h3>Усі замовлення (${orders.length})</h3>
       ${orders.length===0?'<div class="empty">Замовлень ще немає</div>':`
       <div class="table-wrap">
-      <table><tr><th>Клієнт</th><th>Пас.</th><th>Подача</th><th>Маршрут</th><th>Ціна</th><th>Комісія</th><th>Водій</th><th>Статус</th><th>Етап</th><th></th></tr>
+      <table><tr><th>Клієнт</th><th>Пас.</th><th>Маршрут</th><th>Ціна</th><th>Комісія</th><th>Водій</th><th>Статус</th><th>Етап</th><th></th></tr>
       ${orders.map(o=>{
         const drv = state.drivers.find(d=>d.id===o.driver_id);
         return `<tr>
-          <td>${o.client}</td><td>${o.passengers}</td><td class="mono">${fmtDate(o.departure_time)}</td>
+          <td>${o.client}</td><td>${o.passengers}</td>
           <td><div class="route-chain">${routeChainHtml(o.stops)}</div></td>
           <td class="mono">${o.price} грн</td><td class="mono">${o.commission} грн</td>
           <td>${drv?drv.name:(o.status==='new'?assignSelect(o):'—')}</td>
@@ -295,7 +294,7 @@ async function submitOrder(){
   busy.order = true;
   const client = document.getElementById('f_client').value.trim();
   const passengers = parseInt(document.getElementById('f_pax').value)||1;
-  const departureTime = document.getElementById('f_time').value || null;
+  const departureTime = null;
   const price = parseFloat(document.getElementById('f_price').value)||0;
   const commission = parseFloat(document.getElementById('f_commission').value)||0;
   const driverId = document.getElementById('f_driver').value || null;
@@ -340,9 +339,6 @@ function renderEditOrder(){
         <div><label>Кількість пасажирів</label><input type="number" id="e_pax" min="1" value="${o.passengers}"></div>
       </div>
       <div class="row">
-        <div><label>Дата й час подачі</label><input type="datetime-local" id="e_time" value="${o.departure_time?new Date(o.departure_time).toISOString().slice(0,16):''}"></div>
-      </div>
-      <div class="row">
         <div><label>Ціна (грн)</label><input type="number" id="e_price" value="${o.price}"></div>
         <div><label>Комісія (грн)</label><input type="number" id="e_commission" value="${o.commission}"></div>
       </div>
@@ -360,7 +356,7 @@ function renderEditOrder(){
 async function saveEditOrder(id){
   const client = document.getElementById('e_client').value.trim();
   const passengers = parseInt(document.getElementById('e_pax').value)||1;
-  const departureTime = document.getElementById('e_time').value || null;
+  const departureTime = null;
   const price = parseFloat(document.getElementById('e_price').value)||0;
   const commission = parseFloat(document.getElementById('e_commission').value)||0;
   const stops = collectStops('e_stops');
@@ -375,6 +371,10 @@ async function saveEditOrder(id){
 
 /* ===================== DRIVERS ===================== */
 function formatDriverLocation(d){
+  if(d.current_city && d.current_lat && d.current_lng){
+    const url = `https://maps.google.com/?q=${d.current_lat},${d.current_lng}`;
+    return `📍 ${d.current_city} <a href="${url}" target="_blank" style="color:var(--info)">(карта)</a>`;
+  }
   if(d.current_city) return `📍 ${d.current_city}`;
   if(d.current_lat && d.current_lng){
     const url = `https://maps.google.com/?q=${d.current_lat},${d.current_lng}`;
@@ -465,14 +465,23 @@ async function removeDriver(id){ await api('/drivers/'+id,{method:'DELETE'}); st
 function renderCities(main){
   main.innerHTML = `
     <h2 class="page-title">Міста</h2>
-    <p class="page-sub">Цей список водії бачать у Telegram-боті («📍 Оновити локацію») і в підказках маршруту.</p>
+    <p class="page-sub">Цей список водії бачать у Telegram-боті («📍 Оновити локацію») і в підказках маршруту. Координати визначаються автоматично — за ними GPS-локація водія прив'язується до найближчого міста зі списку.</p>
     <div class="panel">
       <div id="citiesList">${state.cities.length===0?'<div class="empty">Список порожній</div>':
-        `<table><tr><th>Місто</th><th></th></tr>${state.cities.map(c=>`<tr><td>${c.name}</td><td><button class="btn danger small" onclick="deleteCity(${c.id})">Видалити</button></td></tr>`).join('')}</table>`}
+        `<table><tr><th>Місто</th><th>Координати</th><th></th></tr>${state.cities.map(c=>`<tr><td>${c.name}</td>
+          <td>${c.lat&&c.lng?'✅ визначено':'<span style="color:var(--muted)">⚠ не визначено</span>'}</td>
+          <td style="white-space:nowrap">
+            ${!c.lat||!c.lng?`<button class="btn secondary small" onclick="regeocodeCity(${c.id})">Визначити</button>`:''}
+            <button class="btn danger small" onclick="deleteCity(${c.id})">Видалити</button>
+          </td></tr>`).join('')}</table>`}
       </div>
       <div class="row" style="margin-top:14px"><div><label>Назва міста</label><input type="text" id="nct_name"></div></div>
       <button class="btn secondary" onclick="addCity()">Додати місто</button>
     </div>`;
+}
+async function regeocodeCity(id){
+  try{ await api(`/cities/${id}/geocode`, {method:'POST'}); state.cities = await api('/cities'); render(); showToast('Координати визначено'); }
+  catch(e){ showToast(e.message); }
 }
 async function addCity(){
   const name = document.getElementById('nct_name').value.trim();
