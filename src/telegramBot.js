@@ -2,6 +2,7 @@ const { Telegraf, Markup } = require('telegraf');
 const { pool } = require('./db');
 const { stageLabel, formatOrderMessage } = require('./orderLogic');
 const { findNearestCity } = require('./geocode');
+const { generatePlacard } = require('./placard');
 
 const botToken = process.env.TELEGRAM_BOT_TOKEN;
 const botEnabled = !!botToken;
@@ -12,11 +13,15 @@ async function getOrder(orderId) {
   return rows[0];
 }
 
-function confirmKeyboard(orderId) {
-  return Markup.inlineKeyboard([
-    Markup.button.callback('✅ Підтвердити', `confirm_${orderId}`),
-    Markup.button.callback('❌ Відхилити', `decline_${orderId}`),
-  ]);
+function confirmKeyboard(order) {
+  const rows = [[
+    Markup.button.callback('✅ Підтвердити', `confirm_${order.id}`),
+    Markup.button.callback('❌ Відхилити', `decline_${order.id}`),
+  ]];
+  if (order.airport_pickup) {
+    rows.push([Markup.button.callback('🪧 Табличка для зустрічі', `placard_${order.id}`)]);
+  }
+  return Markup.inlineKeyboard(rows);
 }
 function advanceKeyboard(orderId, label) {
   return Markup.inlineKeyboard([Markup.button.callback(label, `advance_${orderId}`)]);
@@ -63,7 +68,7 @@ async function notifyDriverNewOrder(driverId, orderId) {
   const order = await getOrder(orderId);
   const text = formatOrderMessage(order);
 
-  const msg = await bot.telegram.sendMessage(driver.telegram_chat_id, text, confirmKeyboard(order.id));
+  const msg = await bot.telegram.sendMessage(driver.telegram_chat_id, text, confirmKeyboard(order));
   await pool.query('UPDATE orders SET telegram_message_id=$1 WHERE id=$2', [String(msg.message_id), order.id]);
   return { ok: true };
 }
@@ -128,6 +133,25 @@ bot.action(/^city_(.+)$/, async (ctx) => {
   await ctx.editMessageReplyMarkup(null);
   await ctx.reply(`📍 Локацію оновлено: ${city}`, mainKeyboard());
   await ctx.answerCbQuery('Локацію оновлено');
+});
+
+bot.action(/^placard_(\d+)$/, async (ctx) => {
+  const orderId = ctx.match[1];
+  const order = await getOrder(orderId);
+  if (!order) return ctx.answerCbQuery('Замовлення не знайдено');
+  if (!order.airport_pickup) return ctx.answerCbQuery('Для цього замовлення табличка не потрібна');
+  try {
+    await ctx.answerCbQuery('Готую табличку...');
+    const buffer = await generatePlacard({
+      name: order.client,
+      flightNumber: order.flight_number,
+      flightDate: order.flight_date,
+    });
+    await ctx.replyWithPhoto({ source: buffer }, { caption: `Табличка для зустрічі — замовлення №${order.id}` });
+  } catch (e) {
+    console.error('Помилка генерації таблички:', e);
+    await ctx.reply('Не вдалося згенерувати табличку. Спробуйте ще раз.');
+  }
 });
 
 bot.action(/confirm_(\d+)/, async (ctx) => {

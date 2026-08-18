@@ -9,7 +9,8 @@ router.get('/', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
-  const { client, passengers, departureTime, stops, price, commission, driverId } = req.body || {};
+  const { client, clientPhone, passengers, departureTime, stops, price, commission, driverId,
+    airportPickup, flightNumber, flightDate } = req.body || {};
   if (!client) return res.status(400).json({ error: "Вкажіть клієнта" });
   if (!Array.isArray(stops) || stops.length < 2) {
     return res.status(400).json({ error: 'Додайте мінімум 2 точки маршруту' });
@@ -35,9 +36,10 @@ router.post('/', async (req, res) => {
   }
 
   const { rows } = await pool.query(
-    `INSERT INTO orders (client, passengers, departure_time, stops, price, commission, status, driver_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-    [client, passengers || 1, departureTime || null, JSON.stringify(stops), price || 0, commission || 0, status, assignedDriverId]
+    `INSERT INTO orders (client, client_phone, passengers, departure_time, stops, price, commission, status, driver_id, airport_pickup, flight_number, flight_date)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+    [client, clientPhone || null, passengers || 1, departureTime || null, JSON.stringify(stops), price || 0, commission || 0, status, assignedDriverId,
+      !!airportPickup, flightNumber || null, flightDate || null]
   );
   const order = rows[0];
 
@@ -57,22 +59,28 @@ router.post('/', async (req, res) => {
 // Редагувати можна лише замовлення в статусі "нове" (ще не надіслане водію)
 router.put('/:id', async (req, res) => {
   const orderId = req.params.id;
-  const { client, passengers, departureTime, stops, price, commission } = req.body || {};
+  const { client, clientPhone, passengers, departureTime, stops, price, commission,
+    airportPickup, flightNumber, flightDate } = req.body || {};
   const order = (await pool.query('SELECT * FROM orders WHERE id=$1', [orderId])).rows[0];
   if (!order) return res.status(404).json({ error: 'Замовлення не знайдено' });
   if (order.status !== 'new') {
     return res.status(400).json({ error: 'Редагувати можна лише нові, ще не призначені замовлення' });
   }
   const { rows } = await pool.query(
-    `UPDATE orders SET client=$1, passengers=$2, departure_time=$3, stops=$4, price=$5, commission=$6, updated_at=now()
-     WHERE id=$7 RETURNING *`,
+    `UPDATE orders SET client=$1, client_phone=$2, passengers=$3, departure_time=$4, stops=$5, price=$6, commission=$7,
+       airport_pickup=$8, flight_number=$9, flight_date=$10, updated_at=now()
+     WHERE id=$11 RETURNING *`,
     [
       client || order.client,
+      clientPhone !== undefined ? (clientPhone || null) : order.client_phone,
       passengers || order.passengers,
       departureTime !== undefined ? (departureTime || null) : order.departure_time,
       stops && stops.length >= 2 ? JSON.stringify(stops) : JSON.stringify(order.stops),
       price !== undefined ? price : order.price,
       commission !== undefined ? commission : order.commission,
+      airportPickup !== undefined ? !!airportPickup : order.airport_pickup,
+      flightNumber !== undefined ? (flightNumber || null) : order.flight_number,
+      flightDate !== undefined ? (flightDate || null) : order.flight_date,
       orderId,
     ]
   );

@@ -23,9 +23,11 @@ function formatOrderMessage(order) {
   const lines = [
     `🚕 Нове замовлення №${order.id}`,
     `Клієнт: ${order.client}`,
+    order.client_phone ? `Телефон клієнта: ${order.client_phone}` : null,
     `Пасажирів: ${order.passengers}`,
     order.departure_time ? `Подача: ${new Date(order.departure_time).toLocaleString('uk-UA')}` : null,
     `Маршрут: ${routeChainText(order.stops)}`,
+    order.airport_pickup ? `✈️ Зустріч в аеропорту${order.flight_number?`, рейс ${order.flight_number}`:''}${order.flight_date?` (${new Date(order.flight_date).toLocaleDateString('uk-UA')})`:''}` : null,
     ``,
     `До сплати клієнтом: ${order.price} грн`,
     `Комісія сервісу: ${order.commission} грн`,

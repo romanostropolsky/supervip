@@ -254,7 +254,7 @@ async function doLogin(){
 }
 
 /* ===================== SIDEBAR / TABS ===================== */
-const BASE_TABS = [['orders','Замовлення'],['drivers','Водії'],['routes_tpl','Маршрути'],['cities','Міста'],['reports','Звіт']];
+const BASE_TABS = [['orders','Замовлення'],['drivers','Водії'],['cities','Міста і маршрути'],['reports','Звіт']];
 function currentTabs(){ return role==='admin' ? [...BASE_TABS, ['dispatchers','Диспетчери']] : BASE_TABS; }
 function renderSidebar(){
   document.getElementById('sidebar').innerHTML = currentTabs().map(([k,l])=>`<button class="${state.tab===k?'active':''}" onclick="setTab('${k}')">${l}</button>`).join('');
@@ -264,7 +264,6 @@ function renderMain(){
   const main = document.getElementById('main');
   if(state.tab==='orders') return renderOrders(main);
   if(state.tab==='drivers') return renderDrivers(main);
-  if(state.tab==='routes_tpl') return renderRouteTemplates(main);
   if(state.tab==='cities') return renderCities(main);
   if(state.tab==='reports') return renderReports(main);
   if(state.tab==='dispatchers') return renderDispatchers(main);
@@ -307,7 +306,8 @@ function renderOrders(main){
       <h3>Нове замовлення</h3>
       <p class="page-sub">Оберіть шаблон маршруту (ціна підставиться автоматично) або зберіть довільний.</p>
       <div class="row">
-        <div><label>Клієнт (ПІБ / телефон)</label><input type="text" id="f_client"></div>
+        <div><label>Ім'я клієнта</label><input type="text" id="f_client" placeholder="Марія Коваленко"></div>
+        <div><label>Телефон клієнта</label><input type="tel" id="f_client_phone" placeholder="+380..."></div>
         <div><label>Кількість пасажирів</label><input type="number" id="f_pax" min="1" max="20" value="1"></div>
       </div>
       <div class="row">
@@ -331,6 +331,16 @@ function renderOrders(main){
       <label>Маршрут (мінімум 2 точки)</label>
       <div id="f_stops"></div>
       <button class="btn secondary small" onclick="addStopRow('f','f_stops')">+ Додати точку</button>
+
+      <div class="checkbox-row"><input type="checkbox" id="f_airport" onchange="toggleAirportFields('f',this.checked)"><label style="margin:0">✈️ Зустріч в аеропорту</label></div>
+      <div id="f_airport_fields" style="display:none">
+        <div class="row">
+          <div><label>Номер рейса</label><input type="text" id="f_flight_number" placeholder="PS-731"></div>
+          <div><label>Дата рейса</label><input type="date" id="f_flight_date"></div>
+        </div>
+        <p class="page-sub" style="margin:6px 0 0 0">Після призначення водій зможе одним кліком у боті отримати табличку з іменем пасажира для зустрічі.</p>
+      </div>
+
       <div><button class="btn" onclick="submitOrder()">Створити замовлення</button></div>
     </div>
 
@@ -342,6 +352,7 @@ function renderOrders(main){
       <div class="table-wrap">
       <table><tr>
         ${sortTh('Клієнт','client',state.orderSort,'setOrderSort')}
+        <th>Телефон</th>
         ${sortTh('Пас.','passengers',state.orderSort,'setOrderSort')}
         ${sortTh('Маршрут','route',state.orderSort,'setOrderSort')}
         ${sortTh('Ціна','price',state.orderSort,'setOrderSort')}
@@ -353,7 +364,9 @@ function renderOrders(main){
       ${orders.map(o=>{
         const drv = state.drivers.find(d=>d.id===o.driver_id);
         return `<tr>
-          <td>${o.client}</td><td>${o.passengers}</td>
+          <td>${o.client}${o.airport_pickup?' <span title="Зустріч в аеропорту">✈️</span>':''}</td>
+          <td class="mono">${o.client_phone||'—'}</td>
+          <td>${o.passengers}</td>
           <td><div class="route-chain">${routeChainHtml(o.stops)}</div></td>
           <td class="mono">${o.price} грн</td><td class="mono">${o.commission} грн</td>
           <td>${drv?drv.name:(o.status==='new'?assignSelect(o):'—')}</td>
@@ -376,21 +389,29 @@ async function submitOrder(){
   if(busy.order) return;
   busy.order = true;
   const client = document.getElementById('f_client').value.trim();
+  const clientPhone = document.getElementById('f_client_phone').value.trim();
   const passengers = parseInt(document.getElementById('f_pax').value)||1;
   const departureTime = null;
   const price = parseFloat(document.getElementById('f_price').value)||0;
   const commission = parseFloat(document.getElementById('f_commission').value)||0;
   const driverId = document.getElementById('f_driver').value || null;
   const stops = collectStops('f_stops');
+  const airportPickup = document.getElementById('f_airport').checked;
+  const flightNumber = document.getElementById('f_flight_number').value.trim();
+  const flightDate = document.getElementById('f_flight_date').value || null;
   if(!client){ showToast('Вкажіть клієнта'); busy.order=false; return; }
   if(stops.length<2){ showToast('Додайте мінімум 2 точки маршруту'); busy.order=false; return; }
   try{
-    const order = await api('/orders', {method:'POST', body:{client,passengers,departureTime,stops,price,commission,driverId}});
+    const order = await api('/orders', {method:'POST', body:{client,clientPhone,passengers,departureTime,stops,price,commission,driverId,airportPickup,flightNumber,flightDate}});
     showToast(order.warning || 'Замовлення створено' + (driverId && !order.warning ? ' і надіслано водію в Telegram' : ''));
     state.orders = await api('/orders'); state.drivers = await api('/drivers');
     render();
   }catch(e){ showToast(e.message); }
   finally{ busy.order = false; }
+}
+function toggleAirportFields(prefix, checked){
+  const box = document.getElementById(`${prefix}_airport_fields`);
+  if(box) box.style.display = checked ? 'block' : 'none';
 }
 function applyRouteTemplate(id){
   if(!id) return;
@@ -428,7 +449,8 @@ function renderEditOrder(){
     <div class="panel">
       <h3>Редагування замовлення №${o.id}</h3>
       <div class="row">
-        <div><label>Клієнт</label><input type="text" id="e_client" value="${o.client}"></div>
+        <div><label>Ім'я клієнта</label><input type="text" id="e_client" value="${o.client}"></div>
+        <div><label>Телефон клієнта</label><input type="tel" id="e_client_phone" value="${o.client_phone||''}"></div>
         <div><label>Кількість пасажирів</label><input type="number" id="e_pax" min="1" value="${o.passengers}"></div>
       </div>
       <div class="row">
@@ -438,6 +460,15 @@ function renderEditOrder(){
       <label>Маршрут</label>
       <div id="e_stops"></div>
       <button class="btn secondary small" onclick="addStopRow('e','e_stops')">+ Додати точку</button>
+
+      <div class="checkbox-row"><input type="checkbox" id="e_airport" ${o.airport_pickup?'checked':''} onchange="toggleAirportFields('e',this.checked)"><label style="margin:0">✈️ Зустріч в аеропорту</label></div>
+      <div id="e_airport_fields" style="display:${o.airport_pickup?'block':'none'}">
+        <div class="row">
+          <div><label>Номер рейса</label><input type="text" id="e_flight_number" value="${o.flight_number||''}" placeholder="PS-731"></div>
+          <div><label>Дата рейса</label><input type="date" id="e_flight_date" value="${o.flight_date?new Date(o.flight_date).toISOString().slice(0,10):''}"></div>
+        </div>
+      </div>
+
       <div>
         <button class="btn" onclick="saveEditOrder(${o.id})">Зберегти</button>
         <button class="btn secondary" onclick="state.editingOrderId=null; render();">Скасувати</button>
@@ -448,13 +479,17 @@ function renderEditOrder(){
 }
 async function saveEditOrder(id){
   const client = document.getElementById('e_client').value.trim();
+  const clientPhone = document.getElementById('e_client_phone').value.trim();
   const passengers = parseInt(document.getElementById('e_pax').value)||1;
   const departureTime = null;
   const price = parseFloat(document.getElementById('e_price').value)||0;
   const commission = parseFloat(document.getElementById('e_commission').value)||0;
   const stops = collectStops('e_stops');
+  const airportPickup = document.getElementById('e_airport').checked;
+  const flightNumber = document.getElementById('e_flight_number').value.trim();
+  const flightDate = document.getElementById('e_flight_date').value || null;
   try{
-    await api(`/orders/${id}`, {method:'PUT', body:{client,passengers,departureTime,price,commission,stops}});
+    await api(`/orders/${id}`, {method:'PUT', body:{client,clientPhone,passengers,departureTime,price,commission,stops,airportPickup,flightNumber,flightDate}});
     state.orders = await api('/orders');
     state.editingOrderId=null;
     showToast('Замовлення оновлено');
@@ -592,11 +627,32 @@ function collectRouteStops(){
   });
   return stops;
 }
-function renderRouteTemplates(main){
+function renderCities(main){
+  const missing = state.cities.filter(c=>!c.lat||!c.lng).length;
   main.innerHTML = `
-    <h2 class="page-title">Маршрути</h2>
-    <p class="page-sub">Шаблони маршрутів із доданих міст і фіксованою ціною — підставляються одним кліком у нове замовлення.</p>
-    ${state.cities.length===0?'<div class="panel"><div class="empty">Спершу додайте хоча б 2 міста на вкладці «Міста»</div></div>':`
+    <h2 class="page-title">Міста і маршрути</h2>
+    <p class="page-sub">Список міст — основа для локації водіїв у боті та для конструктора маршрутів нижче.</p>
+    ${missing>0?`<div class="panel">
+      <p class="page-sub" style="margin:0 0 10px 0">⚠ У ${missing} місті(ах) ще не визначено координати — GPS водіїв біля них поки показуватиме голу точку на карті, а не назву міста.</p>
+      <button class="btn secondary" onclick="geocodeAllCities()" id="geocodeAllBtn">Визначити координати для всіх (${missing})</button>
+    </div>`:''}
+    <div class="panel">
+      <h3>Міста (${state.cities.length})</h3>
+      <div id="citiesList">${state.cities.length===0?'<div class="empty">Список порожній</div>':
+        `<table><tr><th>Місто</th><th>Координати</th><th></th></tr>${state.cities.map(c=>`<tr><td>${c.name}</td>
+          <td>${c.lat&&c.lng?'✅ визначено':'<span style="color:var(--muted)">⚠ не визначено</span>'}</td>
+          <td style="white-space:nowrap">
+            ${!c.lat||!c.lng?`<button class="btn secondary small" onclick="regeocodeCity(${c.id})">Визначити</button>`:''}
+            <button class="btn danger small" onclick="deleteCity(${c.id})">Видалити</button>
+          </td></tr>`).join('')}</table>`}
+      </div>
+      <div class="row" style="margin-top:14px"><div><label>Назва міста</label><input type="text" id="nct_name"></div></div>
+      <button class="btn secondary" onclick="addCity()">Додати місто</button>
+    </div>
+
+    <h2 class="page-title" style="margin-top:8px">Маршрути</h2>
+    <p class="page-sub">Шаблони маршрутів із доданих вище міст і фіксованою ціною — підставляються одним кліком у нове замовлення.</p>
+    ${state.cities.length===0?'<div class="panel"><div class="empty">Спершу додайте хоча б 2 міста вище</div></div>':`
     <div class="panel">
       <h3>Новий маршрут</h3>
       <label>Точки маршруту (мінімум 2, з наявних міст)</label>
@@ -651,29 +707,6 @@ async function deleteRouteTemplate(id){
   await api('/routes/'+id, {method:'DELETE'});
   state.routes = await api('/routes');
   render();
-}
-
-function renderCities(main){
-  const missing = state.cities.filter(c=>!c.lat||!c.lng).length;
-  main.innerHTML = `
-    <h2 class="page-title">Міста</h2>
-    <p class="page-sub">Цей список водії бачать у Telegram-боті («📍 Оновити локацію») і в підказках маршруту. Координати визначаються автоматично — за ними GPS-локація водія прив'язується до найближчого міста зі списку.</p>
-    ${missing>0?`<div class="panel">
-      <p class="page-sub" style="margin:0 0 10px 0">⚠ У ${missing} місті(ах) ще не визначено координати — GPS водіїв біля них поки показуватиме голу точку на карті, а не назву міста.</p>
-      <button class="btn secondary" onclick="geocodeAllCities()" id="geocodeAllBtn">Визначити координати для всіх (${missing})</button>
-    </div>`:''}
-    <div class="panel">
-      <div id="citiesList">${state.cities.length===0?'<div class="empty">Список порожній</div>':
-        `<table><tr><th>Місто</th><th>Координати</th><th></th></tr>${state.cities.map(c=>`<tr><td>${c.name}</td>
-          <td>${c.lat&&c.lng?'✅ визначено':'<span style="color:var(--muted)">⚠ не визначено</span>'}</td>
-          <td style="white-space:nowrap">
-            ${!c.lat||!c.lng?`<button class="btn secondary small" onclick="regeocodeCity(${c.id})">Визначити</button>`:''}
-            <button class="btn danger small" onclick="deleteCity(${c.id})">Видалити</button>
-          </td></tr>`).join('')}</table>`}
-      </div>
-      <div class="row" style="margin-top:14px"><div><label>Назва міста</label><input type="text" id="nct_name"></div></div>
-      <button class="btn secondary" onclick="addCity()">Додати місто</button>
-    </div>`;
 }
 async function regeocodeCity(id){
   try{ await api(`/cities/${id}/geocode`, {method:'POST'}); state.cities = await api('/cities'); render(); showToast('Координати визначено'); }
